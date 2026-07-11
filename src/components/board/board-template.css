@@ -476,19 +476,15 @@
 .bb-layout-overlap .bb-block-type {
   margin-top: 20px;
 }
-/* QR overlaps the signature tile's top-right corner. */
-.bb-layout-overlap .bb-block-signature {
-  position: relative;
-}
-.bb-layout-overlap .bb-block-qr {
-  position: absolute;
-  right: 40px;
-  top: -70px;
-  z-index: 4;
+/* QR flows in-line like the other assets (no absolute/overlap tricks I can't
+   verify visually — deliberate overlaps are a layouts-v2 task with Ruthnie
+   reviewing each attempt). */
+.bb-layout-overlap .bb-qr-tile {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
 }
 .bb-layout-overlap .bb-qr-tile img {
-  width: 150px;
-  height: 150px;
+  width: 180px;
+  height: 180px;
 }
 
 /* =========================================================================
@@ -542,13 +538,27 @@
 .bb-layout-split .bb-foot {
   left: 552px;
 }
+/* Split: the QR lives in the LEFT color band, below the logo/wordmark — the
+   band has empty space and logo+QR read as grouped brand marks. Positioned
+   within the band's 480px width (bottom area), above the footer. Bounded to
+   empty band space, so no collision with the palette on the right. */
 .bb-layout-split .bb-block-qr {
   position: absolute;
-  right: 72px;
-  top: 40px;
-  flex-direction: row;
-  align-items: center;
-  gap: 18px;
+  left: 56px;
+  bottom: 130px;
+  align-items: flex-start;
+  z-index: 2;
+}
+.bb-layout-split .bb-qr-tile {
+  padding: 16px;
+}
+.bb-layout-split .bb-qr-tile img {
+  width: 150px;
+  height: 150px;
+}
+.bb-layout-split .bb-qr-caption {
+  color: var(--bb-hero-ink, #fff);
+  opacity: 0.7;
 }
 
 /* =========================================================================
@@ -620,7 +630,5 @@
   padding: 0 96px;
 }
 .bb-layout-poster .bb-block-qr {
-  position: absolute;
-  right: 96px;
-  bottom: 150px;
+  align-items: flex-start;
 }

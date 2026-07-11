@@ -569,24 +569,34 @@ function BlobAsset({
       </Space>
       {storedBlob && (
         <Text type="success" style={{ fontSize: 12 }}>
-          ✓ Imported — this data is saved with the board.
+          ✓ Data saved with the board.
         </Text>
       )}
-      {/* If the blob had no rendered image, let the user drop the downloaded one. */}
+      {/* If there's no image yet, prompt clearly to upload the downloaded one.
+          A config-only blob (no rendered image) leaves nothing to SHOW on the
+          board until the user drops the image here — so make it a callout, not
+          a whisper. */}
       {!image && (
-        <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            No image in the blob — upload the {assetLabel} image to show it:
+        <div
+          style={{
+            border: "1px solid #ffd591",
+            background: "#fffbe6",
+            borderRadius: 8,
+            padding: "10px 12px",
+          }}
+        >
+          <Text style={{ fontSize: 13, display: "block", marginBottom: 8 }}>
+            {storedBlob
+              ? `This blob has the ${assetLabel} settings but no image. Upload the ${assetLabel} you downloaded to show it on the board:`
+              : `Upload the ${assetLabel} image you downloaded:`}
           </Text>
-          <div style={{ marginTop: 6 }}>
-            <ImageDrop
-              current={image}
-              accept={uploadAccept}
-              onPick={(dataUrl) => onChange({ ...data, [imageKey]: dataUrl })}
-              onClear={() => onChange({ ...data, [imageKey]: null })}
-              label={`Upload ${assetLabel} image`}
-            />
-          </div>
+          <ImageDrop
+            current={image}
+            accept={uploadAccept}
+            onPick={(dataUrl) => onChange({ ...data, [imageKey]: dataUrl })}
+            onClear={() => onChange({ ...data, [imageKey]: null })}
+            label={`Upload ${assetLabel} image`}
+          />
         </div>
       )}
       {image && (
