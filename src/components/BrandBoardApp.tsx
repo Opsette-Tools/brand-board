@@ -146,6 +146,20 @@ function BrandBoardInner() {
   }, []);
   const scale = previewWidth / BOARD_W;
 
+  // The board grows to fit its content, so measure its real height to reserve
+  // the correct preview space (no clipping) and to size the export.
+  const [boardHeight, setBoardHeight] = useState(BOARD_H);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const h = el.scrollHeight;
+      if (h > 0) setBoardHeight(h);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const projectButtons = (
     <>
       <Button
@@ -231,14 +245,13 @@ function BrandBoardInner() {
                 overflow: "hidden",
                 boxShadow: "0 18px 60px rgba(0,0,0,0.18)",
                 background: "#e9e6de",
-                // Reserve the scaled height so layout doesn't jump.
-                height: BOARD_H * scale,
+                // Reserve the REAL scaled board height so nothing clips.
+                height: boardHeight * scale,
               }}
             >
               <div
                 style={{
                   width: BOARD_W,
-                  height: BOARD_H,
                   transform: `scale(${scale})`,
                   transformOrigin: "top left",
                 }}

@@ -20,6 +20,20 @@ export interface ColorRamp {
   stops: { stop: string; hex: string }[];
 }
 
+/**
+ * The six semantic role colors (from Palette Studio's `roles`). These drive the
+ * "in-context" mini mock composition on the board — a real page built from the
+ * palette, not just swatches. Null when no palette with roles has been imported.
+ */
+export interface BrandRoles {
+  background: string;
+  surface: string;
+  text: string;
+  heading: string;
+  mutedText: string;
+  border: string;
+}
+
 export interface BrandBoardData {
   kitName: string;
   tagline: string;
@@ -30,6 +44,8 @@ export interface BrandBoardData {
   colors: BrandColor[];
   /** Optional per-color ramps, when a palette payload provides scales. */
   ramps: ColorRamp[];
+  /** The six semantic roles, when a palette payload provides them. */
+  roles: BrandRoles | null;
 
   // ---- Type (from Palette Studio payload, or picked here) ----
   headingFont: string;
@@ -51,7 +67,10 @@ export interface BrandBoardData {
   cardDataUrl: string | null;
 }
 
-export const MAX_COLORS = 6;
+// A brand board shows the brand's actual palette colors. In custom ("my own
+// colors") mode a user may define many — show them all, not a curated few. The
+// cap is a sanity bound, not a design limit; the swatch row wraps past ~6.
+export const MAX_COLORS = 12;
 
 export function emptyBoard(): BrandBoardData {
   return {
@@ -60,6 +79,7 @@ export function emptyBoard(): BrandBoardData {
     pageColor: "#F6F3EC",
     colors: [],
     ramps: [],
+    roles: null,
     headingFont: "Playfair Display",
     bodyFont: "Inter",
     logoDataUrl: null,
@@ -76,6 +96,7 @@ export interface BlockPresence {
   hero: boolean; // always true (kitName / logo / tagline)
   palette: boolean;
   type: boolean; // always true (fonts always set)
+  context: boolean; // the in-context mini mock (needs roles)
   signature: boolean;
   qr: boolean;
   card: boolean;
@@ -86,6 +107,7 @@ export function blockPresence(b: BrandBoardData): BlockPresence {
     hero: true,
     palette: b.colors.length > 0,
     type: true,
+    context: b.roles !== null,
     signature: b.signatureHtml !== null,
     qr: b.qrDataUrl !== null,
     card: b.cardDataUrl !== null,

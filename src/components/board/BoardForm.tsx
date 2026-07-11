@@ -192,7 +192,18 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
                   Import palette
                 </Button>
                 {data.colors.length > 0 && (
-                  <ColorList data={data} onChange={onChange} />
+                  <>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Brand colors</Text>
+                    <ColorList data={data} onChange={onChange} />
+                  </>
+                )}
+                {data.roles && (
+                  <>
+                    <Text type="secondary" style={{ fontSize: 12, marginTop: 4 }}>
+                      Role colors
+                    </Text>
+                    <RolesList data={data} onChange={onChange} />
+                  </>
                 )}
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Font pairing</Text>
@@ -322,6 +333,51 @@ function ColorList({
       {data.colors.length < MAX_COLORS && (
         <Button size="small" onClick={add}>+ Add color</Button>
       )}
+    </Space>
+  );
+}
+
+// --- Editable role colors (background/surface/text/heading/muted/border) -----
+const ROLE_FIELDS: { key: keyof NonNullable<BrandBoardData["roles"]>; label: string }[] = [
+  { key: "background", label: "Page background" },
+  { key: "surface", label: "Card background" },
+  { key: "heading", label: "Heading" },
+  { key: "text", label: "Body text" },
+  { key: "mutedText", label: "Muted text" },
+  { key: "border", label: "Border" },
+];
+
+function RolesList({
+  data,
+  onChange,
+}: {
+  data: BrandBoardData;
+  onChange: (next: BrandBoardData) => void;
+}) {
+  if (!data.roles) return null;
+  const roles = data.roles;
+  const setRole = (key: keyof typeof roles, hex: string) =>
+    onChange({ ...data, roles: { ...roles, [key]: hex } });
+
+  return (
+    <Space direction="vertical" size={6} style={{ width: "100%" }}>
+      {ROLE_FIELDS.map(({ key, label }) => (
+        <div key={key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="color"
+            value={roles[key]}
+            onChange={(e) => setRole(key, e.target.value.toUpperCase())}
+            style={{ width: 34, height: 32, border: "none", background: "none", padding: 0 }}
+          />
+          <Input
+            size="small"
+            value={roles[key]}
+            onChange={(e) => setRole(key, e.target.value.toUpperCase())}
+            style={{ width: 96, fontFamily: "monospace" }}
+          />
+          <Text style={{ flex: 1, fontSize: 13 }}>{label}</Text>
+        </div>
+      ))}
     </Space>
   );
 }

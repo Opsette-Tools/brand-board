@@ -106,6 +106,35 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
                   ))}
                 </div>
               )}
+
+              {/* Role colors: the functional palette, each with its hex, so a
+                  client (and their developer) gets the WHOLE palette, not just
+                  the 3 brand colors. Mirrors the left panel's Role colors. */}
+              {data.roles && (
+                <div className="bb-role-swatches">
+                  {(
+                    [
+                      ["Page background", data.roles.background],
+                      ["Card background", data.roles.surface],
+                      ["Heading", data.roles.heading],
+                      ["Body text", data.roles.text],
+                      ["Muted text", data.roles.mutedText],
+                      ["Border", data.roles.border],
+                    ] as const
+                  ).map(([label, hex]) => (
+                    <div className="bb-role-swatch" key={label}>
+                      <span
+                        className="bb-role-chip"
+                        style={{ background: hex, borderColor: data.roles!.border }}
+                      />
+                      <span className="bb-role-meta">
+                        <span className="bb-role-name">{label}</span>
+                        <span className="bb-role-hex">{hex.toUpperCase()}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
@@ -130,6 +159,54 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
               </div>
             </div>
           </section>
+
+          {/* ---- In context: a mini mock page built from the six roles ---- */}
+          {present.context && data.roles && (
+            <section className="bb-block bb-block-context">
+              <h2 className="bb-block-label">In Use</h2>
+              <div
+                className="bb-mock"
+                style={{
+                  background: data.roles.background,
+                  borderColor: data.roles.border,
+                }}
+              >
+                <div
+                  className="bb-mock-card"
+                  style={{
+                    background: data.roles.surface,
+                    borderColor: data.roles.border,
+                  }}
+                >
+                  <span
+                    className="bb-mock-eyebrow"
+                    style={{ color: data.colors[0]?.hex || data.roles.heading }}
+                  >
+                    {data.kitName || "Your Brand"}
+                  </span>
+                  <h3 className="bb-mock-heading" style={{ color: data.roles.heading }}>
+                    A headline in your brand
+                  </h3>
+                  <p className="bb-mock-body" style={{ color: data.roles.text }}>
+                    Body copy sits on the surface color, easy to read. Muted text
+                    handles the quieter details below.
+                  </p>
+                  <p className="bb-mock-muted" style={{ color: data.roles.mutedText }}>
+                    Supporting caption · updated today
+                  </p>
+                  <span
+                    className="bb-mock-button"
+                    style={{
+                      background: data.colors[0]?.hex || data.roles.heading,
+                      color: readableInk(data.colors[0]?.hex || data.roles.heading),
+                    }}
+                  >
+                    Primary action
+                  </span>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* ---- Signature ----
               Injected INLINE (not an iframe): html-to-image cannot rasterize

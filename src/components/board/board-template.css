@@ -18,13 +18,18 @@
 .bb-board {
   position: relative;
   width: var(--bb-w);
-  height: var(--bb-h);
+  /* Poster proportion is a MINIMUM, not a cap — the board grows to fit its
+     content (e.g. a 9-color palette that wraps, plus signature/card/mock) so
+     nothing clips. The exporter measures the real rendered height. */
+  min-height: var(--bb-h);
   background: var(--bb-paper, #f6f3ec);
   color: var(--bb-ink, #1a1714);
   font-family: var(--bb-body-font, "Inter"), -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   box-sizing: border-box;
+  /* Room above the absolutely-positioned footer so content never collides. */
+  padding-bottom: 150px;
 }
 
 /* ---- Hero ---------------------------------------------------------------- */
@@ -114,21 +119,24 @@
 }
 
 /* ---- Palette ------------------------------------------------------------- */
+/* Up to 5 across; more colors wrap to additional rows so EVERY color shows with
+   a readable hex, rather than getting squeezed into slivers. */
 .bb-swatches {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
   width: 100%;
-  border-radius: 18px;
-  overflow: hidden;
-  height: 360px;
 }
 .bb-swatch {
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 30px 26px;
+  padding: 28px 24px;
   box-sizing: border-box;
   min-width: 0;
+  height: 200px;
+  border-radius: 14px;
+  overflow: hidden;
 }
 .bb-swatch-role {
   font-size: 24px;
@@ -146,6 +154,44 @@
   flex-direction: column;
   gap: 10px;
   margin-top: 18px;
+}
+
+/* Role colors — the functional palette, chip + label + hex, in a tidy grid. */
+.bb-role-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px 32px;
+  margin-top: 30px;
+}
+.bb-role-swatch {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+.bb-role-chip {
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border-radius: 12px;
+  border: 2px solid;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.bb-role-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bb-role-name {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--bb-ink, #1a1714);
+}
+.bb-role-hex {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 22px;
+  color: var(--bb-muted, #8a8178);
 }
 .bb-ramp {
   display: flex;
@@ -200,6 +246,56 @@
   color: var(--bb-ink, #1a1714);
   max-width: 1150px;
   margin: 0 0 14px;
+}
+
+/* ---- In-context mock ----------------------------------------------------- */
+.bb-mock {
+  border-radius: 18px;
+  border: 2px solid;
+  padding: 46px;
+  box-sizing: border-box;
+}
+.bb-mock-card {
+  border-radius: 14px;
+  border: 1px solid;
+  padding: 40px 44px;
+  max-width: 900px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+}
+.bb-mock-eyebrow {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 18px;
+}
+.bb-mock-heading {
+  font-family: var(--bb-heading-font, "Playfair Display"), Georgia, serif;
+  font-size: 58px;
+  line-height: 1.05;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+.bb-mock-body {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 30px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+.bb-mock-muted {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 24px;
+  margin: 0 0 34px;
+}
+.bb-mock-button {
+  display: inline-block;
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  padding: 18px 40px;
+  border-radius: 12px;
 }
 
 /* ---- Signature ----------------------------------------------------------- */
@@ -361,8 +457,8 @@
 .bb-layout-overlap .bb-block-palette .bb-block-label::after {
   background: rgba(255, 255, 255, 0.3);
 }
-.bb-layout-overlap .bb-swatches {
-  height: 300px;
+.bb-layout-overlap .bb-swatch {
+  height: 240px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.22);
 }
 .bb-layout-overlap .bb-block-type {
@@ -422,8 +518,11 @@
   flex-direction: column;
   gap: 56px;
 }
+.bb-layout-split .bb-swatch {
+  height: 180px;
+}
 .bb-layout-split .bb-swatches {
-  height: 280px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
 }
 .bb-layout-split .bb-type-heading-sample {
   font-size: 150px;
@@ -478,9 +577,9 @@
 .bb-layout-poster .bb-block-palette .bb-block-label {
   padding: 0 96px;
 }
-.bb-layout-poster .bb-swatches {
+.bb-layout-poster .bb-swatch {
+  height: 240px;
   border-radius: 0;
-  height: 260px;
 }
 .bb-layout-poster .bb-swatch {
   padding: 30px 40px;
@@ -491,6 +590,7 @@
   gap: 60px;
 }
 .bb-layout-poster .bb-block-type,
+.bb-layout-poster .bb-block-context,
 .bb-layout-poster .bb-block-signature,
 .bb-layout-poster .bb-block-card {
   padding: 0 96px;

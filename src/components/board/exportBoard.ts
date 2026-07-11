@@ -2,8 +2,10 @@ import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { waitForFonts } from "@/lib/fonts";
 
-// The board's intrinsic pixel size (must match --bb-w / --bb-h in
-// board-template.css). We export at 2x this for a crisp, print-grade PNG.
+// The board's intrinsic WIDTH (must match --bb-w in board-template.css). The
+// height is dynamic — the board grows to fit its content — so the exporter
+// measures the node rather than assuming a fixed height. BOARD_H is the minimum
+// (poster proportion) used for the preview's initial reservation.
 export const BOARD_W = 1600;
 export const BOARD_H = 2000;
 const EXPORT_SCALE = 2;
@@ -11,9 +13,9 @@ const EXPORT_SCALE = 2;
 /**
  * Rasterize the board node to a PNG data URL at export resolution.
  *
- * The node is rendered at its intrinsic size (it may be visually scaled down in
- * the preview via a transform on a *wrapper*, but the node itself is full-size),
- * so we pass explicit width/height and a pixelRatio to get a 3200x4000 image.
+ * The board renders at its intrinsic WIDTH and grows in height to fit content,
+ * so we snapshot at the node's REAL measured height (not a fixed value) to
+ * capture the whole board with nothing clipped.
  */
 export async function boardToPngDataUrl(
   node: HTMLElement,
@@ -23,9 +25,11 @@ export async function boardToPngDataUrl(
   // captures a fallback font.
   await waitForFonts(fontFamilies);
 
+  const height = Math.max(node.scrollHeight, BOARD_H);
+
   return toPng(node, {
     width: BOARD_W,
-    height: BOARD_H,
+    height,
     pixelRatio: EXPORT_SCALE,
     cacheBust: true,
     // Neutralize any inherited transform so the snapshot is 1:1 at full size
@@ -64,10 +68,11 @@ export async function boardToPdfBlob(
 ): Promise<Blob> {
   const png = await boardToPngDataUrl(node, fontFamilies);
 
-  // Portrait PDF sized to the board's aspect ratio in points. Letter-ish width
-  // (612pt) scaled to the 4:5 board so the image fills the page exactly.
+  // Portrait PDF sized to the board's REAL aspect ratio (height is dynamic), so
+  // the PDF looks identical to the PNG — full-bleed, no margins, no clipping.
+  const height = Math.max(node.scrollHeight, BOARD_H);
   const pdfW = 612;
-  const pdfH = (BOARD_H / BOARD_W) * pdfW; // 765pt
+  const pdfH = (height / BOARD_W) * pdfW;
   const doc = new jsPDF({ unit: "pt", format: [pdfW, pdfH], orientation: "portrait" });
   doc.addImage(png, "PNG", 0, 0, pdfW, pdfH, undefined, "FAST");
   return doc.output("blob");
