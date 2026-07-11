@@ -299,23 +299,35 @@
 }
 
 /* ---- Signature ----------------------------------------------------------- */
+/* The email HTML is authored at native mail size (~500px, 12–16px type). On a
+   1600px poster that reads tiny and lost, so we scale it up ~1.9x to a
+   comfortable presentation size and let the white card hug the scaled content.
+   The card sits left-aligned in a roomy frame rather than floating centered. */
 .bb-signature-frame {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px 44px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  display: flex;
+  justify-content: flex-start;
 }
-/* Reset the injected email HTML's inherited context so it renders on its own
-   terms (email HTML assumes a white mail-client background + default type). */
+.bb-signature-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 56px 64px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+}
+/* `zoom` (unlike `transform: scale`) grows the layout box, so the white card
+   wraps the enlarged signature with no clipping or reserved-height math. It's
+   supported in Chromium, which is what the preview and html-to-image export
+   both use — so on-screen and exported output match. */
+.bb-signature-scaler {
+  zoom: 1.9;
+}
 .bb-signature-inner {
   color: #1a1a1a;
-  font-size: 16px;
   line-height: 1.4;
   text-align: left;
 }
 .bb-signature-inner img {
-  max-width: 100%;
+  max-width: none;
 }
 
 /* ---- Digital card -------------------------------------------------------- */

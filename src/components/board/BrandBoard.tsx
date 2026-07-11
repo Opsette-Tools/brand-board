@@ -37,16 +37,28 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
     const pageInk = readableInk(data.pageColor);
     const onLightPage = pageInk === "#1a1714";
 
+    // When a palette provides role colors, the board adopts them for its own
+    // type — the brand's name uses the brand's heading color, taglines/captions
+    // use the muted color — so the guide reads as one coherent system, not
+    // fixed neutrals. The HERO is exempt (it sits on the color field and needs
+    // the contrast ink). Falls back to page-tone-derived neutrals otherwise.
+    const inkColor = data.roles?.heading ?? pageInk;
+    const mutedColor =
+      data.roles?.mutedText ?? (onLightPage ? "#8a8178" : "rgba(255,255,255,0.6)");
+    const hairlineColor =
+      data.roles?.border ?? (onLightPage ? "#e2dccf" : "rgba(255,255,255,0.18)");
+
     const boardStyle: CSSProperties = {
       ["--bb-primary" as string]: primary,
       ["--bb-secondary" as string]: secondary,
       ["--bb-hero-ink" as string]: heroInk,
       ["--bb-paper" as string]: data.pageColor,
-      ["--bb-ink" as string]: pageInk,
-      // Muted + hairline derived from the page tone so they read correctly on
-      // white, bone, or a dark page.
-      ["--bb-muted" as string]: onLightPage ? "#8a8178" : "rgba(255,255,255,0.6)",
-      ["--bb-hairline" as string]: onLightPage ? "#e2dccf" : "rgba(255,255,255,0.18)",
+      ["--bb-ink" as string]: inkColor,
+      ["--bb-muted" as string]: mutedColor,
+      ["--bb-hairline" as string]: hairlineColor,
+      // The brand's own accent for section labels / eyebrows, tying the page to
+      // the palette. Defaults to muted when no palette is present.
+      ["--bb-accent" as string]: primary,
       ["--bb-heading-font" as string]: `"${data.headingFont}"`,
       ["--bb-body-font" as string]: `"${data.bodyFont}"`,
     };
@@ -219,10 +231,17 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
             <section className="bb-block bb-block-signature">
               <h2 className="bb-block-label">Email Signature</h2>
               <div className="bb-signature-frame">
-                <div
-                  className="bb-signature-inner"
-                  dangerouslySetInnerHTML={{ __html: data.signatureHtml }}
-                />
+                <div className="bb-signature-card">
+                  {/* Scale the native ~500px email signature up to poster size.
+                      The sizing box reserves the SCALED footprint (native size ×
+                      scale) so the white card wraps it instead of clipping. */}
+                  <div className="bb-signature-scaler">
+                    <div
+                      className="bb-signature-inner"
+                      dangerouslySetInnerHTML={{ __html: data.signatureHtml }}
+                    />
+                  </div>
+                </div>
               </div>
             </section>
           )}
