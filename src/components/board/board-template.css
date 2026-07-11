@@ -538,27 +538,10 @@
 .bb-layout-split .bb-foot {
   left: 552px;
 }
-/* Split: the QR lives in the LEFT color band, below the logo/wordmark — the
-   band has empty space and logo+QR read as grouped brand marks. Positioned
-   within the band's 480px width (bottom area), above the footer. Bounded to
-   empty band space, so no collision with the palette on the right. */
+/* QR flows in-line with the other assets on the right (no absolute positioning
+   — the band placement collided with the wordmark/tagline). */
 .bb-layout-split .bb-block-qr {
-  position: absolute;
-  left: 56px;
-  bottom: 130px;
   align-items: flex-start;
-  z-index: 2;
-}
-.bb-layout-split .bb-qr-tile {
-  padding: 16px;
-}
-.bb-layout-split .bb-qr-tile img {
-  width: 150px;
-  height: 150px;
-}
-.bb-layout-split .bb-qr-caption {
-  color: var(--bb-hero-ink, #fff);
-  opacity: 0.7;
 }
 
 /* =========================================================================
