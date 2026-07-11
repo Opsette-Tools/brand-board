@@ -15,7 +15,12 @@ import type { BrandBoardData } from "./board.types";
 import { MAX_COLORS } from "./board.types";
 import { LAYOUTS, type LayoutId } from "./layouts";
 import { FONT_PAIRINGS } from "@/lib/fonts";
-import { ingestPalettePayload, ingestSignaturePayload } from "./ingest";
+import {
+  ingestPalettePayload,
+  ingestSignaturePayload,
+  ingestQrPayload,
+  ingestCardPayload,
+} from "./ingest";
 import { uuid } from "@/lib/uuid";
 
 const { Text } = Typography;
@@ -311,27 +316,31 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
           },
           {
             key: "qr",
-            label: "QR code — upload from QR Creator",
+            label: "QR code — paste from QR Creator",
             children: (
-              <ImageDrop
-                current={data.qrDataUrl}
-                accept="image/png,image/svg+xml"
-                onPick={(qrDataUrl) => patch({ qrDataUrl })}
-                onClear={() => patch({ qrDataUrl: null })}
-                label="Upload QR"
+              <BlobAsset
+                data={data}
+                onChange={onChange}
+                assetKey="qr"
+                imageKey="qrDataUrl"
+                ingest={ingestQrPayload}
+                assetLabel="QR"
+                uploadAccept="image/png,image/svg+xml"
               />
             ),
           },
           {
             key: "card",
-            label: "Digital card — upload from Digital Card",
+            label: "Digital card — paste from Digital Card",
             children: (
-              <ImageDrop
-                current={data.cardDataUrl}
-                accept="image/png,image/jpeg"
-                onPick={(cardDataUrl) => patch({ cardDataUrl })}
-                onClear={() => patch({ cardDataUrl: null })}
-                label="Upload card"
+              <BlobAsset
+                data={data}
+                onChange={onChange}
+                assetKey="card"
+                imageKey="cardDataUrl"
+                ingest={ingestCardPayload}
+                assetLabel="card"
+                uploadAccept="image/png,image/jpeg"
               />
             ),
           },
@@ -471,5 +480,122 @@ function ImageDrop({
         </>
       )}
     </div>
+  );
+}
+
+// --- Blob-first asset (QR / card) --------------------------------------------
+// Paste the app's "Export to Brand Board" blob: we STORE the whole blob (held,
+// re-copyable, archived in the project file, pasteable back into its app) AND,
+// if the blob carries a rendered image, show it on the board. If the blob has
+// no image, a small upload lets the user drop the downloaded PNG for the visual.
+function BlobAsset({
+  data,
+  onChange,
+  assetKey,
+  imageKey,
+  ingest,
+  assetLabel,
+  uploadAccept,
+}: {
+  data: BrandBoardData;
+  onChange: (next: BrandBoardData) => void;
+  assetKey: "qr" | "card";
+  imageKey: "qrDataUrl" | "cardDataUrl";
+  ingest: (input: string) => { image: string | null; ok: boolean };
+  assetLabel: string;
+  uploadAccept: string;
+}) {
+  const [blob, setBlob] = useState(data.sourceBlobs[assetKey] ?? "");
+  const storedBlob = data.sourceBlobs[assetKey];
+  const image = data[imageKey];
+
+  const doImport = () => {
+    const { image: img, ok } = ingest(blob);
+    if (!ok) {
+      message.error(`That doesn't look like a ${assetLabel} export.`);
+      return;
+    }
+    onChange({
+      ...data,
+      // Store the image if the blob carried one; keep any existing upload if not.
+      [imageKey]: img ?? data[imageKey],
+      sourceBlobs: { ...data.sourceBlobs, [assetKey]: blob.trim() },
+    });
+    message.success(
+      img ? `${assetLabel} imported` : `${assetLabel} data saved — upload the image below to show it`,
+    );
+  };
+
+  const copyBlob = async () => {
+    if (!storedBlob) return;
+    try {
+      await navigator.clipboard.writeText(storedBlob);
+      message.success(`${assetLabel} blob copied`);
+    } catch {
+      message.error("Couldn't copy — select and copy manually.");
+    }
+  };
+
+  const clearAll = () =>
+    onChange({
+      ...data,
+      [imageKey]: null,
+      sourceBlobs: { ...data.sourceBlobs, [assetKey]: null },
+    });
+
+  return (
+    <Space direction="vertical" style={{ width: "100%" }} size={8}>
+      <Input.TextArea
+        rows={3}
+        placeholder={`Paste the "Export to Brand Board" blob from ${assetLabel === "QR" ? "QR Creator" : "Digital Card"}`}
+        value={blob}
+        onChange={(e) => setBlob(e.target.value)}
+        style={{ fontFamily: "monospace", fontSize: 12 }}
+      />
+      <Space wrap>
+        <Button onClick={doImport} disabled={!blob.trim()}>
+          Import {assetLabel}
+        </Button>
+        {storedBlob && (
+          <Button icon={<CopyOutlined />} onClick={copyBlob}>
+            Copy blob
+          </Button>
+        )}
+        {(storedBlob || image) && (
+          <Button type="text" icon={<DeleteOutlined />} onClick={clearAll}>
+            Remove
+          </Button>
+        )}
+      </Space>
+      {storedBlob && (
+        <Text type="success" style={{ fontSize: 12 }}>
+          ✓ Imported — this data is saved with the board.
+        </Text>
+      )}
+      {/* If the blob had no rendered image, let the user drop the downloaded one. */}
+      {!image && (
+        <div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            No image in the blob — upload the {assetLabel} image to show it:
+          </Text>
+          <div style={{ marginTop: 6 }}>
+            <ImageDrop
+              current={image}
+              accept={uploadAccept}
+              onPick={(dataUrl) => onChange({ ...data, [imageKey]: dataUrl })}
+              onClear={() => onChange({ ...data, [imageKey]: null })}
+              label={`Upload ${assetLabel} image`}
+            />
+          </div>
+        </div>
+      )}
+      {image && (
+        <img
+          src={image}
+          alt={assetLabel}
+          style={{ height: 72, width: "auto", borderRadius: 6, marginTop: 4 }}
+        />
+      )}
+    </Space>
   );
 }

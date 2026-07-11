@@ -216,6 +216,47 @@ export function ingestSignaturePayload(input: string): string | null {
   return null;
 }
 
+/**
+ * Ingest a QR Creator "qr" payload. Returns:
+ *  - `image`: a rendered QR data URL IF the blob carries one (`data.image`),
+ *    so a single paste shows the QR on the board — else null (then the user
+ *    uploads the downloaded PNG separately for the visual).
+ *  - `stored`: true if the blob is a valid QR export worth archiving.
+ * The full blob is always stored on the board (held + re-copyable + archived in
+ * the project file) so it can be pasted back into QR Creator to recreate the QR.
+ */
+export function ingestQrPayload(input: string): { image: string | null; ok: boolean } {
+  const raw = safeParse(input);
+  if (!isRecord(raw)) return { image: null, ok: false };
+  if (raw.type && raw.type !== "qr") return { image: null, ok: false };
+  const data = isRecord(raw.data) ? raw.data : raw;
+  // Rendered image, if QR Creator included one.
+  const image =
+    typeof data.image === "string" && data.image.startsWith("data:")
+      ? data.image
+      : null;
+  // Valid if it has a config or an image — either way it's a real QR export.
+  const ok = image !== null || isRecord(data.config) || typeof data.url === "string";
+  return { image, ok };
+}
+
+/**
+ * Ingest a Digital Card "card" payload. Same pattern as QR: pull a rendered
+ * image if present (`data.image`), always store the blob for archive/reopen.
+ */
+export function ingestCardPayload(input: string): { image: string | null; ok: boolean } {
+  const raw = safeParse(input);
+  if (!isRecord(raw)) return { image: null, ok: false };
+  if (raw.type && raw.type !== "card") return { image: null, ok: false };
+  const data = isRecord(raw.data) ? raw.data : raw;
+  const image =
+    typeof data.image === "string" && data.image.startsWith("data:")
+      ? data.image
+      : null;
+  const ok = image !== null || isRecord(data.card) || isRecord(data.config);
+  return { image, ok };
+}
+
 // Re-export for convenience: the known font families a pairing might name, so
 // the app can lazy-load whatever a payload brings even if it's not a preset.
 export function fontFamiliesFrom(headingFont: string, bodyFont: string): string[] {

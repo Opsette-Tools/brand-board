@@ -74,6 +74,8 @@ export interface BrandBoardData {
   sourceBlobs: {
     palette: string | null;
     signature: string | null;
+    qr: string | null;
+    card: string | null;
   };
 }
 
@@ -98,7 +100,7 @@ export function emptyBoard(): BrandBoardData {
     signatureHtml: null,
     qrDataUrl: null,
     cardDataUrl: null,
-    sourceBlobs: { palette: null, signature: null },
+    sourceBlobs: { palette: null, signature: null, qr: null, card: null },
   };
 }
 
