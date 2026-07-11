@@ -65,6 +65,16 @@ export interface BrandBoardData {
 
   // ---- Digital card (uploaded PNG from Digital Card) ----
   cardDataUrl: string | null;
+
+  // ---- Source blobs ----
+  // The exact JSON blobs the user imported, kept so they can be re-copied back
+  // out anytime and are archived in the project file / localStorage draft. This
+  // is what makes import non-destructive: the original data is never lost, even
+  // after the paste field is cleared.
+  sourceBlobs: {
+    palette: string | null;
+    signature: string | null;
+  };
 }
 
 // A brand board shows the brand's actual palette colors. In custom ("my own
@@ -88,6 +98,7 @@ export function emptyBoard(): BrandBoardData {
     signatureHtml: null,
     qrDataUrl: null,
     cardDataUrl: null,
+    sourceBlobs: { palette: null, signature: null },
   };
 }
 

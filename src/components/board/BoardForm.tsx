@@ -10,7 +10,7 @@ import {
   Upload,
   message,
 } from "antd";
-import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { CopyOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import type { BrandBoardData } from "./board.types";
 import { MAX_COLORS } from "./board.types";
 import { LAYOUTS, type LayoutId } from "./layouts";
@@ -45,14 +45,29 @@ function readImage(
 
 export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormProps) {
   const patch = (p: Partial<BrandBoardData>) => onChange({ ...data, ...p });
-  const [paletteBlob, setPaletteBlob] = useState("");
-  const [signatureBlob, setSignatureBlob] = useState("");
+  // Seed the paste fields from any already-imported blobs so a reloaded/opened
+  // board shows exactly what was imported — the input is never a black hole.
+  const [paletteBlob, setPaletteBlob] = useState(data.sourceBlobs.palette ?? "");
+  const [signatureBlob, setSignatureBlob] = useState(data.sourceBlobs.signature ?? "");
+
+  const copyBlob = async (blob: string | null, label: string) => {
+    if (!blob) return;
+    try {
+      await navigator.clipboard.writeText(blob);
+      message.success(`${label} copied`);
+    } catch {
+      message.error("Couldn't copy — select the text and copy manually.");
+    }
+  };
 
   const handlePastePalette = () => {
     const next = ingestPalettePayload(paletteBlob, data);
     if (next) {
-      onChange(next);
-      setPaletteBlob("");
+      // Keep the raw blob in state (re-copyable + archived), don't wipe input.
+      onChange({
+        ...next,
+        sourceBlobs: { ...next.sourceBlobs, palette: paletteBlob.trim() },
+      });
       message.success("Palette imported from Palette Studio");
     } else {
       message.error("That doesn't look like a Palette Studio export.");
@@ -62,8 +77,11 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
   const handlePasteSignature = () => {
     const html = ingestSignaturePayload(signatureBlob);
     if (html) {
-      patch({ signatureHtml: html });
-      setSignatureBlob("");
+      onChange({
+        ...data,
+        signatureHtml: html,
+        sourceBlobs: { ...data.sourceBlobs, signature: signatureBlob.trim() },
+      });
       message.success("Signature imported");
     } else {
       message.error("That doesn't look like a Signature Studio export.");
@@ -188,9 +206,24 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
                   onChange={(e) => setPaletteBlob(e.target.value)}
                   style={{ fontFamily: "monospace", fontSize: 12 }}
                 />
-                <Button onClick={handlePastePalette} disabled={!paletteBlob.trim()}>
-                  Import palette
-                </Button>
+                <Space>
+                  <Button onClick={handlePastePalette} disabled={!paletteBlob.trim()}>
+                    Import palette
+                  </Button>
+                  {data.sourceBlobs.palette && (
+                    <Button
+                      icon={<CopyOutlined />}
+                      onClick={() => copyBlob(data.sourceBlobs.palette, "Palette blob")}
+                    >
+                      Copy blob
+                    </Button>
+                  )}
+                </Space>
+                {data.sourceBlobs.palette && (
+                  <Text type="success" style={{ fontSize: 12 }}>
+                    ✓ Imported — this data is saved with the board.
+                  </Text>
+                )}
                 {data.colors.length > 0 && (
                   <>
                     <Text type="secondary" style={{ fontSize: 12 }}>Brand colors</Text>
@@ -240,16 +273,39 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
                   onChange={(e) => setSignatureBlob(e.target.value)}
                   style={{ fontFamily: "monospace", fontSize: 12 }}
                 />
-                <Space>
+                <Space wrap>
                   <Button onClick={handlePasteSignature} disabled={!signatureBlob.trim()}>
                     Import signature
                   </Button>
+                  {data.sourceBlobs.signature && (
+                    <Button
+                      icon={<CopyOutlined />}
+                      onClick={() => copyBlob(data.sourceBlobs.signature, "Signature blob")}
+                    >
+                      Copy blob
+                    </Button>
+                  )}
                   {data.signatureHtml && (
-                    <Button type="text" icon={<DeleteOutlined />} onClick={() => patch({ signatureHtml: null })}>
+                    <Button
+                      type="text"
+                      icon={<DeleteOutlined />}
+                      onClick={() =>
+                        onChange({
+                          ...data,
+                          signatureHtml: null,
+                          sourceBlobs: { ...data.sourceBlobs, signature: null },
+                        })
+                      }
+                    >
                       Remove
                     </Button>
                   )}
                 </Space>
+                {data.sourceBlobs.signature && (
+                  <Text type="success" style={{ fontSize: 12 }}>
+                    ✓ Imported — this data is saved with the board.
+                  </Text>
+                )}
               </Space>
             ),
           },

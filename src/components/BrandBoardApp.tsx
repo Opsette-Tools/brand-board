@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App as AntApp, Button, Card, Grid, Space, Typography, message } from "antd";
+import { App as AntApp, Button, Card, Grid, Input, Modal, Space, Typography, message } from "antd";
 import {
   FilePdfOutlined,
   FileImageOutlined,
@@ -86,12 +86,60 @@ function BrandBoardInner() {
 
   const hasContent = boardHasContent(data);
   const projectInputRef = useRef<HTMLInputElement>(null);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
 
-  const saveProject = () => {
+  // Save As: prefer the File System Access API (a real OS Save dialog where the
+  // user picks BOTH the folder and the filename — Chrome/Edge). Fall back to a
+  // filename modal + plain download where that API isn't available.
+  const saveProject = async () => {
+    const json = serializeProject(data, layout, new Date().toISOString());
+    const suggested = projectFileName(data.kitName);
+
+    const picker = (
+      window as unknown as {
+        showSaveFilePicker?: (opts: unknown) => Promise<{
+          createWritable: () => Promise<{
+            write: (d: string) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }>;
+      }
+    ).showSaveFilePicker;
+
+    if (picker) {
+      try {
+        const handle = await picker({
+          suggestedName: suggested,
+          types: [
+            { description: "Brand Board project", accept: { "application/json": [".json"] } },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        message.success("Project saved");
+      } catch (err) {
+        // User cancelled the dialog — do nothing, no error toast.
+        if ((err as Error)?.name !== "AbortError") {
+          message.error("Save failed — try again.");
+        }
+      }
+      return;
+    }
+
+    // Fallback: ask for a filename in a modal, then download.
+    setSaveName(suggested.replace(/\.json$/, ""));
+    setSaveModalOpen(true);
+  };
+
+  const doFallbackSave = () => {
     const json = serializeProject(data, layout, new Date().toISOString());
     const blob = new Blob([json], { type: "application/json" });
-    triggerDownload(blob, projectFileName(data.kitName));
-    message.success("Project saved — keep this file with the client's folder");
+    const name = (saveName.trim() || "brand-kit").replace(/\.json$/, "");
+    triggerDownload(blob, `${name}.json`);
+    setSaveModalOpen(false);
+    message.success("Project saved to your Downloads");
   };
 
   const openProjectFile = (file: File) => {
@@ -216,6 +264,25 @@ function BrandBoardInner() {
           e.target.value = "";
         }}
       />
+      <Modal
+        title="Save project as"
+        open={saveModalOpen}
+        onOk={doFallbackSave}
+        onCancel={() => setSaveModalOpen(false)}
+        okText="Save"
+      >
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          Name this client's project file. It saves to your Downloads folder.
+        </Text>
+        <Input
+          style={{ marginTop: 10 }}
+          value={saveName}
+          onChange={(e) => setSaveName(e.target.value)}
+          addonAfter=".json"
+          onPressEnter={doFallbackSave}
+          autoFocus
+        />
+      </Modal>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: isMobile ? "16px" : "24px 24px 48px", overflowX: "hidden" }}>
         <div
           style={{

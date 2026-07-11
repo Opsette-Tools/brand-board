@@ -582,19 +582,31 @@
   opacity: 1;
   font-size: 34px;
 }
-/* Palette as a full-bleed bar spanning the whole width, no gutter. */
+/* Poster: only the SWATCH BAR bleeds edge-to-edge. The label, ramps, and role
+   strip keep the normal 96px gutter so they don't collide with the page edge or
+   each other (the earlier full-bleed on the whole block caused that). */
 .bb-layout-poster .bb-block-palette {
   margin: 0;
 }
 .bb-layout-poster .bb-block-palette .bb-block-label {
   padding: 0 96px;
 }
+.bb-layout-poster .bb-swatches {
+  gap: 0;
+}
 .bb-layout-poster .bb-swatch {
   height: 240px;
   border-radius: 0;
-}
-.bb-layout-poster .bb-swatch {
   padding: 30px 40px;
+}
+/* Ramps + role colors sit inside the gutter, not full-bleed. */
+.bb-layout-poster .bb-ramps,
+.bb-layout-poster .bb-role-swatches {
+  padding: 0 96px;
+  box-sizing: border-box;
+}
+.bb-layout-poster .bb-ramps {
+  margin-top: 24px;
 }
 .bb-layout-poster .bb-body {
   display: flex;
