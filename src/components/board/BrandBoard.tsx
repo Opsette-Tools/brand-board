@@ -37,6 +37,26 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
     const pageInk = readableInk(data.pageColor);
     const onLightPage = pageInk === "#1a1714";
 
+    // The CTA/button color for the in-use mock: prefer a brand color the user
+    // labeled Button/CTA/Primary/Accent; otherwise the most colorful (least
+    // neutral) brand color; otherwise the palette primary. NOT colors[0] blindly
+    // — that may be the pale page background in a custom palette.
+    const ctaColor = (() => {
+      const labeled = data.colors.find((c) =>
+        /button|cta|primary|accent/i.test(c.label),
+      );
+      if (labeled) return labeled.hex;
+      // Most colorful = furthest from grey (max channel spread).
+      const spread = (hex: string) => {
+        const n = parseInt(hex.replace("#", ""), 16);
+        if (Number.isNaN(n)) return 0;
+        const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+        return Math.max(r, g, b) - Math.min(r, g, b);
+      };
+      const colorful = [...data.colors].sort((a, b) => spread(b.hex) - spread(a.hex))[0];
+      return colorful?.hex || primary;
+    })();
+
     // When a palette provides role colors, the board adopts them for its own
     // type — the brand's name uses the brand's heading color, taglines/captions
     // use the muted color — so the guide reads as one coherent system, not
@@ -192,7 +212,7 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
                 >
                   <span
                     className="bb-mock-eyebrow"
-                    style={{ color: data.colors[0]?.hex || data.roles.heading }}
+                    style={{ color: ctaColor }}
                   >
                     {data.kitName || "Your Brand"}
                   </span>
@@ -209,8 +229,8 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
                   <span
                     className="bb-mock-button"
                     style={{
-                      background: data.colors[0]?.hex || data.roles.heading,
-                      color: readableInk(data.colors[0]?.hex || data.roles.heading),
+                      background: ctaColor,
+                      color: readableInk(ctaColor),
                     }}
                   >
                     Primary action

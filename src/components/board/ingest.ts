@@ -188,16 +188,21 @@ export function ingestPalettePayload(
   }
 
   // The six semantic roles → drive the in-context mini mock composition.
-  // Prefer an explicit `roles` object; otherwise derive it from a custom[] list
-  // (Palette Studio custom mode), mapping each color's role to our six.
+  // Importing a palette is a FULL RESET of the palette section: use the new
+  // blob's roles (explicit, or derived from custom[]) or null — never keep the
+  // PREVIOUS palette's roles, which would leave residual colors behind when the
+  // new palette has fewer/different ones.
   const roles =
     readRoles(data.roles) ??
     rolesFromCustom(Array.isArray(data.custom) ? data.custom : null) ??
-    current.roles;
+    null;
 
   const kitName =
     current.kitName || (typeof data.kitName === "string" ? data.kitName : current.kitName);
 
+  // Fully replace all palette-derived fields (colors, ramps, roles, fonts). The
+  // rest of the board (signature, QR, social, logo, name/tagline) is untouched,
+  // so re-importing a palette doesn't disturb already-imported assets.
   return { ...current, colors, ramps, roles, headingFont, bodyFont, kitName };
 }
 
