@@ -163,7 +163,9 @@ export function ingestPalettePayload(
 
   if (colors.length === 0) return null;
 
-  // Ramps from the scales, for "colors in context".
+  // Ramps from the scales — the "Tint & shade scales" Palette Studio generates
+  // (hover states, borders, tinted backgrounds). A real deliverable; show them
+  // in both generated and custom mode. They're fully replaced on each import.
   const ramps: ColorRamp[] = [];
   const scales = isRecord(data.scales) ? data.scales : undefined;
   if (scales) {
