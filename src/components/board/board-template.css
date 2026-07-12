@@ -772,7 +772,8 @@
    page label, ~150px tall instead of 460px. Brand continuity, none of the bulk.
    (Foundation is never targeted here, so its hero is untouched.) */
 .bb-page-applications .bb-hero,
-.bb-page-social .bb-hero {
+.bb-page-social .bb-hero,
+.bb-page-guide .bb-hero {
   height: auto;
   min-height: 0;
   padding: 44px 96px;
@@ -781,12 +782,14 @@
   gap: 32px;
 }
 .bb-page-applications .bb-hero::after,
-.bb-page-social .bb-hero::after {
+.bb-page-social .bb-hero::after,
+.bb-page-guide .bb-hero::after {
   display: none; /* drop the big decorative circle on the slim band */
 }
 /* The label + wordmark sit inline; the logo floats to the right. */
 .bb-page-applications .bb-hero-top,
-.bb-page-social .bb-hero-top {
+.bb-page-social .bb-hero-top,
+.bb-page-guide .bb-hero-top {
   order: 2;
   flex: 0 0 auto;
   justify-content: flex-end;
@@ -794,7 +797,8 @@
   gap: 28px;
 }
 .bb-page-applications .bb-hero-title,
-.bb-page-social .bb-hero-title {
+.bb-page-social .bb-hero-title,
+.bb-page-guide .bb-hero-title {
   order: 1;
   flex: 1 1 auto;
   display: flex;
@@ -802,28 +806,33 @@
   gap: 24px;
 }
 .bb-page-applications .bb-hero-name,
-.bb-page-social .bb-hero-name {
+.bb-page-social .bb-hero-name,
+.bb-page-guide .bb-hero-name {
   font-size: 56px;
   line-height: 1;
 }
 /* Tagline is redundant on the slim band — Foundation already carries it. */
 .bb-page-applications .bb-hero-tagline,
-.bb-page-social .bb-hero-tagline {
+.bb-page-social .bb-hero-tagline,
+.bb-page-guide .bb-hero-tagline {
   display: none;
 }
 /* The page label ("02 — Applications") sits on the band, right-aligned by the logo. */
 .bb-page-applications .bb-eyebrow,
-.bb-page-social .bb-eyebrow {
+.bb-page-social .bb-eyebrow,
+.bb-page-guide .bb-eyebrow {
   font-size: 20px;
 }
 .bb-page-applications .bb-logo-slot img,
-.bb-page-social .bb-logo-slot img {
+.bb-page-social .bb-logo-slot img,
+.bb-page-guide .bb-logo-slot img {
   max-height: 72px;
   max-width: 180px;
 }
 /* With the slim header reclaiming ~300px, give the body its breathing room. */
 .bb-page-applications .bb-body,
-.bb-page-social .bb-body {
+.bb-page-social .bb-body,
+.bb-page-guide .bb-body {
   padding-top: 72px;
 }
 
@@ -855,5 +864,187 @@
   /* Slightly smaller than a lone board so the signature leaves room for the
      card + QR row below it on the same fixed page. */
   zoom: 1.6;
+}
+
+/* =========================================================================
+   GUIDE PAGE — the "how to use this kit" poster. Prose, not composed assets:
+   an intro line, the color role key (the star), a type + files split row, and
+   the social sizing table. Spacious, editorial, glanceable. Fits the fixed
+   1600×2000 frame with room above the footer.
+   ========================================================================= */
+.bb-guide-body {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+.bb-guide-intro {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 33px;
+  line-height: 1.4;
+  color: var(--bb-ink, #1a1714);
+  max-width: 1200px;
+  margin: 0;
+}
+
+/* ---- Color role key (the star block) ---- */
+.bb-guide-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px 64px;
+}
+.bb-guide-role {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  min-width: 0;
+}
+.bb-guide-role-chip {
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 16px;
+  border: 2px solid;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+.bb-guide-role-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.bb-guide-role-name {
+  font-family: var(--bb-heading-font, "Playfair Display"), Georgia, serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--bb-ink, #1a1714);
+  line-height: 1.05;
+}
+.bb-guide-role-job {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 25px;
+  line-height: 1.32;
+  color: var(--bb-ink, #1a1714);
+  opacity: 0.82;
+}
+.bb-guide-role-hex {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 22px;
+  color: var(--bb-muted, #8a8178);
+  margin-top: 2px;
+}
+
+/* ---- Type + Files, side by side ---- */
+.bb-guide-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+}
+.bb-guide-type-line {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 28px;
+  line-height: 1.4;
+  color: var(--bb-ink, #1a1714);
+  margin: 0 0 14px;
+}
+.bb-guide-type-line strong {
+  font-weight: 700;
+}
+.bb-guide-type-note {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 24px;
+  line-height: 1.4;
+  color: var(--bb-muted, #8a8178);
+  margin: 16px 0 0;
+}
+.bb-guide-app-list {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.bb-guide-app {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 22px;
+  border-left: 4px solid var(--bb-accent, #2f4f46);
+}
+.bb-guide-app-file {
+  font-family: var(--bb-heading-font, "Playfair Display"), Georgia, serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--bb-ink, #1a1714);
+  line-height: 1.05;
+}
+.bb-guide-app-what {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 24px;
+  line-height: 1.35;
+  color: var(--bb-ink, #1a1714);
+  opacity: 0.82;
+}
+.bb-guide-app-todo {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 23px;
+  line-height: 1.35;
+  color: var(--bb-muted, #8a8178);
+}
+
+/* ---- Social sizing reference ----
+   Grouped into categories (Banners / Icons / Social card) sitting in columns, so
+   the shared word lifts out into one eyebrow heading and every row is just a
+   short name + its dimensions. Compact — three short columns instead of seven
+   full-width rows, so the block clears the footer. */
+.bb-guide-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px 56px;
+  align-items: start;
+}
+.bb-guide-size-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bb-guide-size-heading {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bb-ink, #1a1714);
+}
+.bb-guide-size-note {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--bb-muted, #8a8178);
+  margin-top: 6px;
+}
+.bb-guide-size-rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+.bb-guide-size-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 2px solid var(--bb-hairline, #e2dccf);
+  min-width: 0;
+}
+.bb-guide-size-name {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--bb-ink, #1a1714);
+}
+.bb-guide-size-dim {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 23px;
+  color: var(--bb-muted, #8a8178);
+  white-space: nowrap;
 }
 

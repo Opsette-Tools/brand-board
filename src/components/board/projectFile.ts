@@ -52,7 +52,13 @@ export function parseProject(text: string): LoadedProject | null {
 
   // Merge onto a fresh empty board so a file saved by an older version (missing
   // newer fields) still loads with sensible defaults — including pageLayouts.
-  const board: BrandBoardData = { ...emptyBoard(), ...(r.board as Partial<BrandBoardData>) };
+  const fresh = emptyBoard();
+  const savedBoard = r.board as Partial<BrandBoardData>;
+  const board: BrandBoardData = { ...fresh, ...savedBoard };
+  // pageLayouts is nested, so a shallow spread would replace the whole object and
+  // drop defaults for pages added after the file was saved (e.g. the guide page).
+  // Deep-merge it so every page keeps a valid layout id.
+  board.pageLayouts = { ...fresh.pageLayouts, ...(savedBoard.pageLayouts ?? {}) };
 
   // Legacy migration: pre-multi-page files stored one top-level `layout`. Fold it
   // into the Foundation page so an old client project reopens looking the same.

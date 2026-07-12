@@ -57,16 +57,20 @@ export interface BrandRoles {
  *   - foundation   → colors + fonts (palette, ramps, roles, type, in-use mock)
  *   - applications → email signature, QR, digital card
  *   - social       → social banners, avatar, favicon, brand assets
+ *   - guide        → the "how to use this kit" poster (palette-role key, type
+ *                    note, applications quick-reference, social sizing table).
+ *                    Reusable prose written once; the last page in the set.
  * A page only appears when it has content, so a minimal kit is a single page.
  */
-export type PageId = "foundation" | "applications" | "social";
+export type PageId = "foundation" | "applications" | "social" | "guide";
 
-export const PAGE_ORDER: PageId[] = ["foundation", "applications", "social"];
+export const PAGE_ORDER: PageId[] = ["foundation", "applications", "social", "guide"];
 
 export const PAGE_META: Record<PageId, { index: string; title: string }> = {
   foundation: { index: "01", title: "Foundation" },
   applications: { index: "02", title: "Applications" },
   social: { index: "03", title: "Social & Assets" },
+  guide: { index: "04", title: "Using Your Kit" },
 };
 
 export interface BrandBoardData {
@@ -176,6 +180,9 @@ export function emptyBoard(): BrandBoardData {
       foundation: "overlap",
       applications: "stack",
       social: "stack",
+      // The guide page has its own fixed body (not the composed-block layouts),
+      // so its layout id is a placeholder — kept only to satisfy the per-page map.
+      guide: "stack",
     },
   };
 }
@@ -215,6 +222,11 @@ export function presentPages(b: BrandBoardData): PageId[] {
   const pages: PageId[] = ["foundation"]; // always — palette/type/hero live here
   if (p.signature || p.qr || p.card) pages.push("applications");
   if (p.social) pages.push("social");
+  // The guide is the "how to use this" poster. It's only meaningful once there's
+  // a real palette to key and applications/assets to point at — a bare name+logo
+  // has nothing to guide. Show it when the kit has a palette (its star block is
+  // the labeled role key, which needs colors).
+  if (p.palette) pages.push("guide");
   return pages;
 }
 
@@ -227,6 +239,9 @@ export function pageBlocks(page: PageId): (keyof BlockPresence)[] {
       return ["signature", "qr", "card"];
     case "social":
       return ["social"];
+    case "guide":
+      // The guide renders its own fixed prose body, not composed blocks.
+      return [];
   }
 }
 

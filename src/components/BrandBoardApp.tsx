@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import { ThemeProvider } from "@/lib/theme";
 import Shell from "@/components/Shell";
-import { BrandPage } from "@/components/board/BrandBoard";
+import { BrandPage, GuidePage } from "@/components/board/BrandBoard";
 import { BoardForm } from "@/components/board/BoardForm";
 import {
   emptyBoard,
@@ -71,7 +71,7 @@ function BrandBoardInner() {
   const [activePage, setActivePage] = useState<PageId>(() => {
     if (import.meta.env.DEV) {
       const p = new URLSearchParams(window.location.search).get("page");
-      if (p === "applications" || p === "social") return p;
+      if (p === "applications" || p === "social" || p === "guide") return p;
     }
     return "foundation";
   });
@@ -86,6 +86,7 @@ function BrandBoardInner() {
     foundation: null,
     applications: null,
     social: null,
+    guide: null,
   });
 
   useEffect(() => {
@@ -287,15 +288,26 @@ function BrandBoardInner() {
       }
       aria-hidden={!visible}
     >
-      <BrandPage
-        ref={(el) => {
-          pageRefs.current[page] = el;
-        }}
-        data={data}
-        page={page}
-        pageNumber={pageNumber}
-        totalPages={pages.length}
-      />
+      {page === "guide" ? (
+        <GuidePage
+          ref={(el) => {
+            pageRefs.current[page] = el;
+          }}
+          data={data}
+          pageNumber={pageNumber}
+          totalPages={pages.length}
+        />
+      ) : (
+        <BrandPage
+          ref={(el) => {
+            pageRefs.current[page] = el;
+          }}
+          data={data}
+          page={page}
+          pageNumber={pageNumber}
+          totalPages={pages.length}
+        />
+      )}
     </div>
   );
 
