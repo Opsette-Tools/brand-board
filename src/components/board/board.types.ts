@@ -156,8 +156,17 @@ export interface BrandBoardData {
   // keyed by PageId as a base64 data URL. Sits BESIDE the raw assets, not
   // wrapping them: the QR still lives alone in qrDataUrl AND baked into the
   // Applications page picture here. Empty until the first Save.
-  // (A combined multi-page PDF — pagesPdf — is planned next, rebuilt from these.)
   pageRenders: Partial<Record<PageId, string>>; // data:image/png;base64,...
+
+  // The whole board as ONE flippable multi-page PDF (one page-picture per PDF
+  // page), baked in at the same Save freeze. This is the single hand-off doc a
+  // client actually wants — page through the kit instead of opening four loose
+  // PNGs. File Builder drops it in as Brand_Board/Brand_Board.pdf. Rebuilt from
+  // the same frozen renders, so it always matches the PNGs. (The text in it is a
+  // picture, not selectable — selectable palette hexes live in Palette Studio's
+  // own PDF.) Null until the first Save. Kept out of the localStorage draft with
+  // pageRenders, for the same quota reason.
+  pagesPdf: string | null; // data:application/pdf;base64,...
 }
 
 // A brand board shows the brand's actual palette colors. In custom ("my own
@@ -197,8 +206,9 @@ export function emptyBoard(): BrandBoardData {
       // so its layout id is a placeholder — kept only to satisfy the per-page map.
       guide: "stack",
     },
-    // No frozen page pictures until the first Save takes them.
+    // No frozen page pictures / PDF until the first Save takes them.
     pageRenders: {},
+    pagesPdf: null,
   };
 }
 

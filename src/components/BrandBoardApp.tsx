@@ -32,6 +32,7 @@ import {
   pagesToPngBlobs,
   pagesToPdfBlob,
   freezePageRenders,
+  pngsToPdfDataUrl,
 } from "@/components/board/exportBoard";
 
 const { Text } = Typography;
@@ -122,13 +123,14 @@ function BrandBoardInner() {
 
   useEffect(() => {
     try {
-      // Keep the frozen page pictures OUT of the localStorage draft: they can be
-      // several MB of base64 and would risk blowing the ~5MB quota, which would
-      // silently kill persistence of the whole draft (even ordinary edits). They
-      // only need to live in the saved kit FILE, not the autosave draft — so
-      // they're re-frozen fresh on every Save anyway. Strip before persisting.
-      const { pageRenders: _omit, ...draft } = data;
-      void _omit;
+      // Keep the frozen page pictures AND the combined PDF OUT of the localStorage
+      // draft: together they're several MB of base64 and would risk blowing the
+      // ~5MB quota, which would silently kill persistence of the whole draft (even
+      // ordinary edits). They only need to live in the saved kit FILE, not the
+      // autosave draft — they're re-frozen fresh on every Save anyway. Strip first.
+      const { pageRenders: _pr, pagesPdf: _pdf, ...draft } = data;
+      void _pr;
+      void _pdf;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {
       /* ignore */
@@ -257,7 +259,12 @@ function BrandBoardInner() {
     const pageRenders = await freezePageRenders(entries, fontFamilies, (done, total) =>
       setSaveProgress({ done, total }),
     );
-    const frozen = { ...data, pageRenders };
+    // Assemble the combined flippable PDF from the SAME frozen renders (in page
+    // order) — no second rasterization, so it always matches the baked PNGs.
+    const pagesPdf = await pngsToPdfDataUrl(
+      entries.map((e) => pageRenders[e.page]).filter((v): v is string => typeof v === "string"),
+    );
+    const frozen = { ...data, pageRenders, pagesPdf };
     // Keep in-memory state consistent with what we're about to write. (These
     // renders are intentionally stripped from the localStorage draft — see the
     // persist effect — so this doesn't bloat autosave; step 2 writes from the

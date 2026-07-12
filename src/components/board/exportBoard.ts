@@ -105,14 +105,46 @@ export async function pagesToPdfBlob(
   nodes: HTMLElement[],
   fontFamilies: string[],
 ): Promise<Blob> {
+  const pngs: string[] = [];
+  for (const node of nodes) pngs.push(await pageToPngDataUrl(node, fontFamilies));
+  return assemblePdfFromPngs(pngs);
+}
+
+/**
+ * Build the combined multi-page PDF from page PNG data URLs that were ALREADY
+ * captured (e.g. the Save-time freeze) — so the PDF costs no second rasterization
+ * and is guaranteed to match the baked PNGs pixel-for-pixel. Returns it as a
+ * clean base64 data URL for baking into the kit file (self-inclusion). Empty in →
+ * null, so a board with no pages doesn't carry an empty PDF.
+ */
+export async function pngsToPdfDataUrl(pngDataUrls: string[]): Promise<string | null> {
+  if (pngDataUrls.length === 0) return null;
+  return blobToDataUrl(assemblePdfFromPngs(pngDataUrls));
+}
+
+/** Shared PDF assembly: one page-picture per PDF page, full-bleed, no margins. */
+function assemblePdfFromPngs(pngDataUrls: string[]): Blob {
   const pdfW = 612;
   const pdfH = (BOARD_H / BOARD_W) * pdfW;
   const doc = new jsPDF({ unit: "pt", format: [pdfW, pdfH], orientation: "portrait" });
-
-  for (let i = 0; i < nodes.length; i++) {
-    const png = await pageToPngDataUrl(nodes[i], fontFamilies);
+  for (let i = 0; i < pngDataUrls.length; i++) {
     if (i > 0) doc.addPage([pdfW, pdfH], "portrait");
-    doc.addImage(png, "PNG", 0, 0, pdfW, pdfH, undefined, "FAST");
+    doc.addImage(pngDataUrls[i], "PNG", 0, 0, pdfW, pdfH, undefined, "FAST");
   }
   return doc.output("blob");
+}
+
+/**
+ * Blob → data URL via the browser's FileReader. This is the clean way to get a
+ * PDF data URL (mirrors Palette Studio's exporter): jsPDF's own datauristring
+ * injects a non-standard `;filename=generated.pdf` segment that strict parsers
+ * reject, but FileReader always yields a standard `data:<mime>;base64,...`.
+ */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
