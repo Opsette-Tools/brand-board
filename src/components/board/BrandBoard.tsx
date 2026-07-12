@@ -265,6 +265,33 @@ export const BrandBoard = forwardRef<HTMLDivElement, BrandBoardProps>(
               <span className="bb-qr-caption">Scan</span>
             </section>
           )}
+
+          {/* ---- Social / brand assets (banners, avatar, favicon...) ---- */}
+          {present.social && (
+            <section className="bb-block bb-block-social">
+              <h2 className="bb-block-label">Social & Brand Assets</h2>
+              <div className="bb-social-grid">
+                {data.socialAssets.map((a) => {
+                  // Wide images (banners) span the row; near-square ones (avatar,
+                  // favicon, icon) sit compact. Ratio drives the layout, no
+                  // per-type logic needed.
+                  const ratio = a.width && a.height ? a.width / a.height : 1;
+                  const wide = ratio >= 1.8;
+                  return (
+                    <div
+                      key={a.id}
+                      className={wide ? "bb-social-item bb-social-wide" : "bb-social-item"}
+                    >
+                      <div className="bb-social-frame">
+                        <img src={a.image} alt={a.label} />
+                      </div>
+                      {a.label && <span className="bb-social-label">{a.label}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
 
         {/* ================= FOOTER ================= */}

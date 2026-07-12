@@ -370,6 +370,49 @@
   color: var(--bb-muted, #8a8178);
 }
 
+/* ---- Social / brand assets ----------------------------------------------- */
+/* Generic grid: wide items (banners) span the full row; compact items (avatar,
+   favicon, icon) flow side by side. Driven by aspect ratio, so any asset Icon
+   Kit sends lays out sensibly with no per-type code. */
+.bb-social-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+.bb-social-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bb-social-wide {
+  flex: 1 1 100%;
+}
+.bb-social-frame {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+  background: #fff;
+  line-height: 0;
+}
+.bb-social-frame img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+/* Compact (non-wide) assets get a capped height so favicons/avatars don't blow
+   up; banners (wide) fill the row width above. */
+.bb-social-item:not(.bb-social-wide) .bb-social-frame img {
+  max-height: 220px;
+  width: auto;
+}
+.bb-social-label {
+  font-family: var(--bb-body-font, "Inter"), sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--bb-muted, #8a8178);
+}
+
 /* ---- Footer -------------------------------------------------------------- */
 .bb-foot {
   position: absolute;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Button,
   Collapse,
@@ -11,7 +11,7 @@ import {
   message,
 } from "antd";
 import { CopyOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import type { BrandBoardData } from "./board.types";
+import type { BrandBoardData, SocialAsset } from "./board.types";
 import { MAX_COLORS } from "./board.types";
 import { LAYOUTS, type LayoutId } from "./layouts";
 import { FONT_PAIRINGS } from "@/lib/fonts";
@@ -20,6 +20,7 @@ import {
   ingestSignaturePayload,
   ingestQrPayload,
   ingestCardPayload,
+  ingestSocialPayload,
 } from "./ingest";
 import { uuid } from "@/lib/uuid";
 
@@ -344,6 +345,11 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
               />
             ),
           },
+          {
+            key: "social",
+            label: "Social & brand assets — paste from Icon Kit",
+            children: <SocialAssets data={data} onChange={onChange} />,
+          },
         ]}
       />
     </Space>
@@ -605,6 +611,148 @@ function BlobAsset({
           alt={assetLabel}
           style={{ height: 72, width: "auto", borderRadius: 6, marginTop: 4 }}
         />
+      )}
+    </Space>
+  );
+}
+
+// --- Social / brand assets (a LIST of images from Icon Kit) -------------------
+// Paste a "social" blob (a list of labeled images: banners, avatar, favicon…) OR
+// upload images manually. The whole blob is stored for archive/reopen; each
+// image renders on the board by its natural aspect ratio.
+function SocialAssets({
+  data,
+  onChange,
+}: {
+  data: BrandBoardData;
+  onChange: (next: BrandBoardData) => void;
+}) {
+  const [blob, setBlob] = useState(data.sourceBlobs.social ?? "");
+  const storedBlob = data.sourceBlobs.social;
+
+  const doImport = () => {
+    const { assets, ok } = ingestSocialPayload(blob);
+    if (!ok) {
+      message.error("That doesn't look like an Icon Kit export (no images found).");
+      return;
+    }
+    onChange({
+      ...data,
+      socialAssets: assets,
+      sourceBlobs: { ...data.sourceBlobs, social: blob.trim() },
+    });
+    message.success(`Imported ${assets.length} asset${assets.length === 1 ? "" : "s"}`);
+  };
+
+  const copyBlob = async () => {
+    if (!storedBlob) return;
+    try {
+      await navigator.clipboard.writeText(storedBlob);
+      message.success("Social blob copied");
+    } catch {
+      message.error("Couldn't copy — select and copy manually.");
+    }
+  };
+
+  // Accumulate across a multi-file batch: each file resolves async, so we buffer
+  // results in a ref and flush once, appending to the assets present at flush
+  // time — avoids siblings clobbering each other via stale closure state.
+  const pendingRef = useRef<SocialAsset[]>([]);
+  const flushTimer = useRef<number | null>(null);
+  const addImages = (files: File[]) => {
+    files.forEach((file) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const dataUrl = r.result as string;
+        const img = new Image();
+        const push = (w?: number, h?: number) => {
+          pendingRef.current.push({
+            id: uuid(),
+            label: file.name.replace(/\.[^.]+$/, ""),
+            image: dataUrl,
+            width: w,
+            height: h,
+          });
+          if (flushTimer.current !== null) window.clearTimeout(flushTimer.current);
+          flushTimer.current = window.setTimeout(() => {
+            const added = pendingRef.current;
+            pendingRef.current = [];
+            flushTimer.current = null;
+            onChange({ ...data, socialAssets: [...data.socialAssets, ...added] });
+          }, 60);
+        };
+        img.onload = () => push(img.naturalWidth, img.naturalHeight);
+        img.onerror = () => push();
+        img.src = dataUrl;
+      };
+      r.readAsDataURL(file);
+    });
+  };
+
+  const removeAsset = (id: string) =>
+    onChange({ ...data, socialAssets: data.socialAssets.filter((a) => a.id !== id) });
+
+  const relabel = (id: string, label: string) =>
+    onChange({
+      ...data,
+      socialAssets: data.socialAssets.map((a) => (a.id === id ? { ...a, label } : a)),
+    });
+
+  return (
+    <Space direction="vertical" style={{ width: "100%" }} size={8}>
+      <Input.TextArea
+        rows={3}
+        placeholder='Paste the "Export to Brand Board" blob from Icon Kit'
+        value={blob}
+        onChange={(e) => setBlob(e.target.value)}
+        style={{ fontFamily: "monospace", fontSize: 12 }}
+      />
+      <Space wrap>
+        <Button onClick={doImport} disabled={!blob.trim()}>
+          Import assets
+        </Button>
+        {storedBlob && (
+          <Button icon={<CopyOutlined />} onClick={copyBlob}>
+            Copy blob
+          </Button>
+        )}
+        <Upload
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          showUploadList={false}
+          multiple
+          beforeUpload={(file) => {
+            addImages([file as File]);
+            return false;
+          }}
+        >
+          <Button icon={<UploadOutlined />}>Upload images</Button>
+        </Upload>
+      </Space>
+      {data.socialAssets.length > 0 && (
+        <Space direction="vertical" size={6} style={{ width: "100%" }}>
+          {data.socialAssets.map((a) => (
+            <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <img
+                src={a.image}
+                alt=""
+                style={{ height: 32, width: "auto", maxWidth: 56, borderRadius: 4 }}
+              />
+              <Input
+                size="small"
+                value={a.label}
+                placeholder="Label (e.g. LinkedIn banner)"
+                onChange={(e) => relabel(a.id, e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                size="small"
+                type="text"
+                icon={<DeleteOutlined />}
+                onClick={() => removeAsset(a.id)}
+              />
+            </div>
+          ))}
+        </Space>
       )}
     </Space>
   );

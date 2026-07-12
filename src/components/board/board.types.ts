@@ -21,6 +21,21 @@ export interface ColorRamp {
 }
 
 /**
+ * A single labeled brand image from Icon Kit — a social banner, avatar, favicon,
+ * app icon, anything. Fully generic: the board just renders the image at (or
+ * scaled from) its natural dimensions and shows the label. `kind` is an optional
+ * grouping/sizing hint, not required.
+ */
+export interface SocialAsset {
+  id: string;
+  label: string;
+  kind?: string; // "banner" | "avatar" | "favicon" | "icon" | ... (hint only)
+  image: string; // data URL
+  width?: number;
+  height?: number;
+}
+
+/**
  * The six semantic role colors (from Palette Studio's `roles`). These drive the
  * "in-context" mini mock composition on the board — a real page built from the
  * palette, not just swatches. Null when no palette with roles has been imported.
@@ -66,6 +81,12 @@ export interface BrandBoardData {
   // ---- Digital card (uploaded PNG from Digital Card) ----
   cardDataUrl: string | null;
 
+  // ---- Social / brand assets (from Icon Kit) ----
+  // A generic, open-ended list of labeled images: social banners (any platform),
+  // profile avatar, favicon, app icons — whatever Icon Kit produces. The board
+  // renders each by its natural size; no per-type logic needed.
+  socialAssets: SocialAsset[];
+
   // ---- Source blobs ----
   // The exact JSON blobs the user imported, kept so they can be re-copied back
   // out anytime and are archived in the project file / localStorage draft. This
@@ -76,6 +97,7 @@ export interface BrandBoardData {
     signature: string | null;
     qr: string | null;
     card: string | null;
+    social: string | null;
   };
 }
 
@@ -100,7 +122,8 @@ export function emptyBoard(): BrandBoardData {
     signatureHtml: null,
     qrDataUrl: null,
     cardDataUrl: null,
-    sourceBlobs: { palette: null, signature: null, qr: null, card: null },
+    socialAssets: [],
+    sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null },
   };
 }
 
@@ -113,6 +136,7 @@ export interface BlockPresence {
   signature: boolean;
   qr: boolean;
   card: boolean;
+  social: boolean;
 }
 
 export function blockPresence(b: BrandBoardData): BlockPresence {
@@ -124,6 +148,7 @@ export function blockPresence(b: BrandBoardData): BlockPresence {
     signature: b.signatureHtml !== null,
     qr: b.qrDataUrl !== null,
     card: b.cardDataUrl !== null,
+    social: b.socialAssets.length > 0,
   };
 }
 
@@ -134,6 +159,7 @@ export function boardHasContent(b: BrandBoardData): boolean {
     b.logoDataUrl !== null ||
     b.signatureHtml !== null ||
     b.qrDataUrl !== null ||
-    b.cardDataUrl !== null
+    b.cardDataUrl !== null ||
+    b.socialAssets.length > 0
   );
 }

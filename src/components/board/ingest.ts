@@ -3,7 +3,7 @@
 // Brand Board's state. Tolerant: accepts the exact contract shape, and falls
 // back to lenient parsing so a partial/hand-built blob still lands.
 
-import type { BrandBoardData, BrandColor, ColorRamp, BrandRoles } from "./board.types";
+import type { BrandBoardData, BrandColor, ColorRamp, BrandRoles, SocialAsset } from "./board.types";
 import { MAX_COLORS } from "./board.types";
 import { FONT_PAIRINGS } from "@/lib/fonts";
 import { uuid } from "@/lib/uuid";
@@ -255,6 +255,43 @@ export function ingestCardPayload(input: string): { image: string | null; ok: bo
       : null;
   const ok = image !== null || isRecord(data.card) || isRecord(data.config);
   return { image, ok };
+}
+
+/**
+ * Ingest an Icon Kit "social" payload → a list of labeled brand images (banners,
+ * avatar, favicon, icons — anything). Fully generic: each item needs an `image`
+ * data URL; label/kind/dimensions are optional. Returns the parsed assets (empty
+ * if none valid) plus ok. The whole blob is still stored for archive/reopen.
+ */
+export function ingestSocialPayload(input: string): { assets: SocialAsset[]; ok: boolean } {
+  const raw = safeParse(input);
+  if (!isRecord(raw)) return { assets: [], ok: false };
+  if (raw.type && raw.type !== "social") return { assets: [], ok: false };
+  const data = isRecord(raw.data) ? raw.data : raw;
+
+  // Accept `assets`, or a bare array, or a single {image} as conveniences.
+  let list: unknown[] = [];
+  if (Array.isArray(data.assets)) list = data.assets;
+  else if (Array.isArray(raw)) list = raw as unknown[];
+  else if (typeof data.image === "string") list = [data];
+
+  const assets: SocialAsset[] = [];
+  for (const item of list) {
+    if (!isRecord(item)) continue;
+    const image = typeof item.image === "string" && item.image.startsWith("data:")
+      ? item.image
+      : null;
+    if (!image) continue;
+    assets.push({
+      id: uuid(),
+      label: typeof item.label === "string" ? item.label : "",
+      kind: typeof item.kind === "string" ? item.kind : undefined,
+      image,
+      width: typeof item.width === "number" ? item.width : undefined,
+      height: typeof item.height === "number" ? item.height : undefined,
+    });
+  }
+  return { assets, ok: assets.length > 0 };
 }
 
 // Re-export for convenience: the known font families a pairing might name, so
