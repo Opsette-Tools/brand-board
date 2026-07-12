@@ -353,6 +353,7 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
                 onChange={onChange}
                 assetKey="card"
                 imageKey="cardDataUrl"
+                vcardKey="cardVcardDataUrl"
                 ingest={ingestCardPayload}
                 assetLabel="card"
                 uploadAccept="image/png,image/jpeg"
@@ -513,6 +514,7 @@ function BlobAsset({
   onChange,
   assetKey,
   imageKey,
+  vcardKey,
   ingest,
   assetLabel,
   uploadAccept,
@@ -521,7 +523,9 @@ function BlobAsset({
   onChange: (next: BrandBoardData) => void;
   assetKey: "qr" | "card";
   imageKey: "qrDataUrl" | "cardDataUrl";
-  ingest: (input: string) => { image: string | null; ok: boolean };
+  // Card-only: the field a baked vCard is stored into. QR passes no vcardKey.
+  vcardKey?: "cardVcardDataUrl";
+  ingest: (input: string) => { image: string | null; vcard?: string | null; ok: boolean };
   assetLabel: string;
   uploadAccept: string;
 }) {
@@ -530,7 +534,7 @@ function BlobAsset({
   const image = data[imageKey];
 
   const doImport = () => {
-    const { image: img, ok } = ingest(blob);
+    const { image: img, vcard, ok } = ingest(blob);
     if (!ok) {
       message.error(`That doesn't look like a ${assetLabel} export.`);
       return;
@@ -539,6 +543,9 @@ function BlobAsset({
       ...data,
       // Store the image if the blob carried one; keep any existing upload if not.
       [imageKey]: img ?? data[imageKey],
+      // Card-only: the vcard fully resets on every paste — a blob without a vcard
+      // clears any prior one to null (same full-reset semantics as the image).
+      ...(vcardKey ? { [vcardKey]: vcard ?? null } : {}),
       sourceBlobs: { ...data.sourceBlobs, [assetKey]: blob.trim() },
     });
     message.success(
@@ -560,6 +567,7 @@ function BlobAsset({
     onChange({
       ...data,
       [imageKey]: null,
+      ...(vcardKey ? { [vcardKey]: null } : {}),
       sourceBlobs: { ...data.sourceBlobs, [assetKey]: null },
     });
 

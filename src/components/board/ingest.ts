@@ -271,18 +271,31 @@ export function ingestQrPayload(input: string): { image: string | null; ok: bool
 /**
  * Ingest a Digital Card "card" payload. Same pattern as QR: pull a rendered
  * image if present (`data.image`), always store the blob for archive/reopen.
+ *
+ * Also pulls the baked vCard (`data.vcard`, a text/vcard data URL) — the
+ * functional "add to contacts" half of the card deliverable. It never renders
+ * on the board (it's a downloadable file, not a visual), but is held so it rides
+ * inside the saved kit → File Builder writes it as Digital_Card/{brand}_contact.vcf.
+ * A blob without a valid `data.vcard` returns `vcard: null`, so the caller's
+ * full-reset paste clears any prior vcard — same semantics as `image`.
  */
-export function ingestCardPayload(input: string): { image: string | null; ok: boolean } {
+export function ingestCardPayload(
+  input: string,
+): { image: string | null; vcard: string | null; ok: boolean } {
   const raw = safeParse(input);
-  if (!isRecord(raw)) return { image: null, ok: false };
-  if (raw.type && raw.type !== "card") return { image: null, ok: false };
+  if (!isRecord(raw)) return { image: null, vcard: null, ok: false };
+  if (raw.type && raw.type !== "card") return { image: null, vcard: null, ok: false };
   const data = isRecord(raw.data) ? raw.data : raw;
   const image =
     typeof data.image === "string" && data.image.startsWith("data:")
       ? data.image
       : null;
+  const vcard =
+    typeof data.vcard === "string" && data.vcard.startsWith("data:")
+      ? data.vcard
+      : null;
   const ok = image !== null || isRecord(data.card) || isRecord(data.config);
-  return { image, ok };
+  return { image, vcard, ok };
 }
 
 /**

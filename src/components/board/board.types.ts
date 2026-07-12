@@ -109,6 +109,13 @@ export interface BrandBoardData {
 
   // ---- Digital card (uploaded PNG from Digital Card) ----
   cardDataUrl: string | null;
+  // The vCard (.vcf) baked into the card blob (data.vcard). The FUNCTIONAL half
+  // of the card deliverable: the client saves it to their phone contacts and
+  // shares it with customers. It's a downloadable file, not a visual, so it's
+  // held here (→ serialized into the kit file → File Builder writes it as
+  // Digital_Card/{brand}_contact.vcf) but never rendered on the board. Null when
+  // the card blob predates the vcard bake, or was pasted without one.
+  cardVcardDataUrl: string | null;
 
   // ---- Social / brand assets (from Icon Kit) ----
   // A generic, open-ended list of labeled images: social banners (any platform),
@@ -159,6 +166,7 @@ export function emptyBoard(): BrandBoardData {
     signatureHtml: null,
     qrDataUrl: null,
     cardDataUrl: null,
+    cardVcardDataUrl: null,
     socialAssets: [],
     sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null },
     pageLayouts: {
