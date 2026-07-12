@@ -86,6 +86,15 @@ export interface BrandBoardData {
   headingFont: string;
   bodyFont: string;
 
+  // ---- Palette renders (from Palette Studio payload) ----
+  // The rendered palette assets baked into the palette blob: a PNG "swatch sheet"
+  // and a PDF whose hex codes are selectable text. Held so the whole kit flows
+  // Palette Studio → Brand Board → File Builder with no manual downloads (the same
+  // reason QR/Card carry qrDataUrl/cardDataUrl). Null when the palette was pasted
+  // from an older blob that didn't bake them, or entered by hand.
+  paletteImageDataUrl: string | null;
+  palettePdfDataUrl: string | null;
+
   // ---- Logo (uploaded — source logo or icon-512.png) ----
   logoDataUrl: string | null;
   logoWidth: number | null;
@@ -142,6 +151,8 @@ export function emptyBoard(): BrandBoardData {
     roles: null,
     headingFont: "Playfair Display",
     bodyFont: "Inter",
+    paletteImageDataUrl: null,
+    palettePdfDataUrl: null,
     logoDataUrl: null,
     logoWidth: null,
     logoHeight: null,

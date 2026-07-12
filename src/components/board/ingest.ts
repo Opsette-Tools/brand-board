@@ -202,10 +202,31 @@ export function ingestPalettePayload(
   const kitName =
     current.kitName || (typeof data.kitName === "string" ? data.kitName : current.kitName);
 
-  // Fully replace all palette-derived fields (colors, ramps, roles, fonts). The
-  // rest of the board (signature, QR, social, logo, name/tagline) is untouched,
-  // so re-importing a palette doesn't disturb already-imported assets.
-  return { ...current, colors, ramps, roles, headingFont, bodyFont, kitName };
+  // Baked renders (added 2026-07-12): the palette blob now carries a rendered PNG
+  // swatch sheet (`data.image`) and a copyable-hex PDF (`data.pdf`), so the whole
+  // kit flows into File Builder with no manual downloads. Same reset semantics as
+  // the rest of the palette section — take the new blob's renders, or null if it's
+  // an older blob without them. Only accept proper data URLs.
+  const asDataUrl = (v: unknown, prefix: string): string | null =>
+    typeof v === "string" && v.startsWith(prefix) ? v : null;
+  const paletteImageDataUrl = asDataUrl(data.image, "data:image/");
+  const palettePdfDataUrl = asDataUrl(data.pdf, "data:application/pdf");
+
+  // Fully replace all palette-derived fields (colors, ramps, roles, fonts,
+  // renders). The rest of the board (signature, QR, social, logo, name/tagline)
+  // is untouched, so re-importing a palette doesn't disturb already-imported
+  // assets.
+  return {
+    ...current,
+    colors,
+    ramps,
+    roles,
+    headingFont,
+    bodyFont,
+    kitName,
+    paletteImageDataUrl,
+    palettePdfDataUrl,
+  };
 }
 
 /**
