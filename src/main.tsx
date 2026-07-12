@@ -36,4 +36,22 @@ if (isPreviewHost || isInIframe) {
     });
 }
 
+// Dev-only verification seed: `?seed=<name>` loads /public/seed-<name>.json into
+// the draft key so a full multi-page kit can be inspected without hand-entry.
+// Dead code in production (DEV-gated) and never bundled into a release.
+if (import.meta.env.DEV) {
+  const seed = new URLSearchParams(window.location.search).get("seed");
+  if (seed) {
+    // Synchronous XHR keeps this before the first render with no async plumbing.
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", `${import.meta.env.BASE_URL}${seed}`, false);
+      xhr.send(null);
+      if (xhr.status === 200) localStorage.setItem("brand-board-draft", xhr.responseText);
+    } catch {
+      /* ignore seed failures */
+    }
+  }
+}
+
 createRoot(document.getElementById("root")!).render(<BrandBoardApp />);

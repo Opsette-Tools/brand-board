@@ -9,7 +9,9 @@
 // This keeps the composition in CSS (where overlap/bleed is natural) while the
 // React tree just renders every present block once.
 
-export type LayoutId = "editorial" | "overlap" | "split" | "poster";
+import type { PageId } from "./board.types";
+
+export type LayoutId = "editorial" | "overlap" | "split" | "poster" | "stack";
 
 export interface BoardLayout {
   id: LayoutId;
@@ -27,7 +29,7 @@ export const LAYOUTS: BoardLayout[] = [
   {
     id: "overlap",
     name: "Overlap",
-    blurb: "Signature & QR tiles overlap the color field. Layered, magazine feel.",
+    blurb: "The palette pulls up and layers over the color field. Magazine feel.",
   },
   {
     id: "split",
@@ -39,10 +41,29 @@ export const LAYOUTS: BoardLayout[] = [
     name: "Poster",
     blurb: "Oversized wordmark hero, palette as a full-width color bar.",
   },
+  {
+    id: "stack",
+    name: "Stacked",
+    blurb: "Clean color header, assets stacked in tidy sections.",
+  },
 ];
 
 export const DEFAULT_LAYOUT: LayoutId = "editorial";
 
 export function layoutClass(id: LayoutId): string {
   return `bb-layout-${id}`;
+}
+
+/**
+ * Which layouts each page offers. Foundation (colors + type) is the page where
+ * composed layouts actually pay off, so it gets the full set. Applications and
+ * Social currently only stack cleanly — they expose Stacked alone until they
+ * earn their own real layouts. New per-page layouts are added here.
+ */
+const FOUNDATION_LAYOUTS: LayoutId[] = ["overlap", "editorial", "split", "poster", "stack"];
+const SIMPLE_LAYOUTS: LayoutId[] = ["stack"];
+
+export function layoutsForPage(page: PageId): BoardLayout[] {
+  const ids = page === "foundation" ? FOUNDATION_LAYOUTS : SIMPLE_LAYOUTS;
+  return ids.map((id) => LAYOUTS.find((l) => l.id === id)!);
 }

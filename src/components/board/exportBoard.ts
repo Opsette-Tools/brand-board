@@ -2,22 +2,19 @@ import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { waitForFonts } from "@/lib/fonts";
 
-// The board's intrinsic WIDTH (must match --bb-w in board-template.css). The
-// height is dynamic — the board grows to fit its content — so the exporter
-// measures the node rather than assuming a fixed height. BOARD_H is the minimum
-// (poster proportion) used for the preview's initial reservation.
+// Each page renders at a FIXED intrinsic size (1600×2000, 4:5 portrait) so the
+// exported set is a run of uniform, gallery-ready posters. The fixed height is
+// the export height — pages are sized to fit their frame, not to grow.
 export const BOARD_W = 1600;
 export const BOARD_H = 2000;
 const EXPORT_SCALE = 2;
 
 /**
- * Rasterize the board node to a PNG data URL at export resolution.
- *
- * The board renders at its intrinsic WIDTH and grows in height to fit content,
- * so we snapshot at the node's REAL measured height (not a fixed value) to
- * capture the whole board with nothing clipped.
+ * Rasterize one page node to a PNG data URL at export resolution. The page is a
+ * fixed 1600×2000 poster, snapshotted at that exact size so every page in the
+ * set matches.
  */
-export async function boardToPngDataUrl(
+export async function pageToPngDataUrl(
   node: HTMLElement,
   fontFamilies: string[],
 ): Promise<string> {
@@ -25,11 +22,9 @@ export async function boardToPngDataUrl(
   // captures a fallback font.
   await waitForFonts(fontFamilies);
 
-  const height = Math.max(node.scrollHeight, BOARD_H);
-
   return toPng(node, {
     width: BOARD_W,
-    height,
+    height: BOARD_H,
     pixelRatio: EXPORT_SCALE,
     cacheBust: true,
     // Neutralize any inherited transform so the snapshot is 1:1 at full size
@@ -51,29 +46,46 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([buf], { type: mime });
 }
 
-export async function boardToPngBlob(
+export async function pageToPngBlob(
   node: HTMLElement,
   fontFamilies: string[],
 ): Promise<Blob> {
-  return dataUrlToBlob(await boardToPngDataUrl(node, fontFamilies));
+  return dataUrlToBlob(await pageToPngDataUrl(node, fontFamilies));
 }
 
 /**
- * Wrap the rendered board image in a portrait PDF at the same aspect ratio, so
- * the PDF looks identical to the PNG — full-bleed, no margins.
+ * Rasterize a set of page nodes to PNG blobs — one per page. The caller names
+ * and downloads each (e.g. kit-01-foundation.png). Rendered sequentially so a
+ * heavy board doesn't fire N simultaneous rasterizations.
  */
-export async function boardToPdfBlob(
-  node: HTMLElement,
+export async function pagesToPngBlobs(
+  nodes: HTMLElement[],
+  fontFamilies: string[],
+): Promise<Blob[]> {
+  const out: Blob[] = [];
+  for (const node of nodes) {
+    out.push(await pageToPngBlob(node, fontFamilies));
+  }
+  return out;
+}
+
+/**
+ * Assemble a multi-page PDF — one board page per PDF page — so a client gets the
+ * whole kit as one hand-off document. Every page is the same fixed proportion,
+ * full-bleed, no margins, matching the PNGs exactly.
+ */
+export async function pagesToPdfBlob(
+  nodes: HTMLElement[],
   fontFamilies: string[],
 ): Promise<Blob> {
-  const png = await boardToPngDataUrl(node, fontFamilies);
-
-  // Portrait PDF sized to the board's REAL aspect ratio (height is dynamic), so
-  // the PDF looks identical to the PNG — full-bleed, no margins, no clipping.
-  const height = Math.max(node.scrollHeight, BOARD_H);
   const pdfW = 612;
-  const pdfH = (height / BOARD_W) * pdfW;
+  const pdfH = (BOARD_H / BOARD_W) * pdfW;
   const doc = new jsPDF({ unit: "pt", format: [pdfW, pdfH], orientation: "portrait" });
-  doc.addImage(png, "PNG", 0, 0, pdfW, pdfH, undefined, "FAST");
+
+  for (let i = 0; i < nodes.length; i++) {
+    const png = await pageToPngDataUrl(nodes[i], fontFamilies);
+    if (i > 0) doc.addPage([pdfW, pdfH], "portrait");
+    doc.addImage(png, "PNG", 0, 0, pdfW, pdfH, undefined, "FAST");
+  }
   return doc.output("blob");
 }

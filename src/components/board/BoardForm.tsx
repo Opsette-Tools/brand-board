@@ -11,9 +11,9 @@ import {
   message,
 } from "antd";
 import { CopyOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import type { BrandBoardData, SocialAsset } from "./board.types";
-import { MAX_COLORS } from "./board.types";
-import { LAYOUTS, type LayoutId } from "./layouts";
+import type { BrandBoardData, SocialAsset, PageId } from "./board.types";
+import { MAX_COLORS, PAGE_META } from "./board.types";
+import { layoutsForPage, type LayoutId } from "./layouts";
 import { FONT_PAIRINGS } from "@/lib/fonts";
 import {
   ingestPalettePayload,
@@ -29,8 +29,8 @@ const { Text } = Typography;
 interface BoardFormProps {
   data: BrandBoardData;
   onChange: (next: BrandBoardData) => void;
-  layout: LayoutId;
-  onLayoutChange: (id: LayoutId) => void;
+  /** The page currently on screen — the layout picker edits THIS page's layout. */
+  activePage: PageId;
 }
 
 // Read an uploaded image file to a data URL + intrinsic size.
@@ -49,8 +49,15 @@ function readImage(
   reader.readAsDataURL(file);
 }
 
-export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormProps) {
+export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
   const patch = (p: Partial<BrandBoardData>) => onChange({ ...data, ...p });
+
+  // The layout picker acts on the ACTIVE page only. Each page carries its own
+  // layout in data.pageLayouts, and offers only the layouts that suit it.
+  const pageLayout = data.pageLayouts[activePage];
+  const pageLayoutOptions = layoutsForPage(activePage);
+  const setPageLayout = (id: LayoutId) =>
+    patch({ pageLayouts: { ...data.pageLayouts, [activePage]: id } });
   // Seed the paste fields from any already-imported blobs so a reloaded/opened
   // board shows exactly what was imported — the input is never a black hole.
   const [paletteBlob, setPaletteBlob] = useState(data.sourceBlobs.palette ?? "");
@@ -96,20 +103,27 @@ export function BoardForm({ data, onChange, layout, onLayoutChange }: BoardFormP
 
   return (
     <Space direction="vertical" size={18} style={{ width: "100%" }}>
-      {/* ---- Layout picker (the "wireframe") ---- */}
-      <div>
-        <Text strong>Layout</Text>
-        <Segmented
-          block
-          style={{ marginTop: 8 }}
-          value={layout}
-          onChange={(v) => onLayoutChange(v as LayoutId)}
-          options={LAYOUTS.map((l) => ({ label: l.name, value: l.id }))}
-        />
-        <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 6 }}>
-          {LAYOUTS.find((l) => l.id === layout)?.blurb}
-        </Text>
-      </div>
+      {/* ---- Layout picker (the "wireframe"), scoped to the active page ----
+          Only pages with a real choice (Foundation, today) show it. Pages that
+          only stack cleanly hide the picker rather than offer a single option. */}
+      {pageLayoutOptions.length > 1 && (
+        <div>
+          <Text strong>Layout</Text>
+          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+            {PAGE_META[activePage].index} · {PAGE_META[activePage].title}
+          </Text>
+          <Segmented
+            block
+            style={{ marginTop: 8 }}
+            value={pageLayout}
+            onChange={(v) => setPageLayout(v as LayoutId)}
+            options={pageLayoutOptions.map((l) => ({ label: l.name, value: l.id }))}
+          />
+          <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 6 }}>
+            {pageLayoutOptions.find((l) => l.id === pageLayout)?.blurb}
+          </Text>
+        </div>
+      )}
 
       <div>
         <Text strong>Brand name</Text>

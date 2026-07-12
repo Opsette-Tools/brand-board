@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App as AntApp, Button, Card, Grid, Input, Modal, Space, Typography, message } from "antd";
+import { App as AntApp, Button, Card, Grid, Input, Modal, Segmented, Space, Typography, message } from "antd";
 import {
   FilePdfOutlined,
   FileImageOutlined,
@@ -8,15 +8,17 @@ import {
 } from "@ant-design/icons";
 import { ThemeProvider } from "@/lib/theme";
 import Shell from "@/components/Shell";
-import { BrandBoard } from "@/components/board/BrandBoard";
+import { BrandPage } from "@/components/board/BrandBoard";
 import { BoardForm } from "@/components/board/BoardForm";
 import {
   emptyBoard,
   boardHasContent,
+  presentPages,
+  PAGE_META,
   type BrandBoardData,
+  type PageId,
 } from "@/components/board/board.types";
 import { ensureBoardFontsLoaded, loadFontFamilies } from "@/lib/fonts";
-import { DEFAULT_LAYOUT, type LayoutId } from "@/components/board/layouts";
 import {
   serializeProject,
   parseProject,
@@ -25,8 +27,8 @@ import {
 import {
   BOARD_W,
   BOARD_H,
-  boardToPngBlob,
-  boardToPdfBlob,
+  pagesToPngBlobs,
+  pagesToPdfBlob,
 } from "@/components/board/exportBoard";
 
 const { Text } = Typography;
@@ -56,11 +58,35 @@ function triggerDownload(blob: Blob, fileName: string) {
 
 function BrandBoardInner() {
   const [data, setData] = useState<BrandBoardData>(loadDraft);
-  const [layout, setLayout] = useState<LayoutId>(DEFAULT_LAYOUT);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
-  const boardRef = useRef<HTMLDivElement>(null);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
+
+  // Which pages have content, in canonical order. The preview and the page
+  // switcher only show these; export only rasterizes these.
+  const pages = useMemo(() => presentPages(data), [data]);
+
+  // The page currently on screen. Kept valid as pages appear/disappear.
+  // (Dev-only: ?page=<id> sets the initial page for verification screenshots.)
+  const [activePage, setActivePage] = useState<PageId>(() => {
+    if (import.meta.env.DEV) {
+      const p = new URLSearchParams(window.location.search).get("page");
+      if (p === "applications" || p === "social") return p;
+    }
+    return "foundation";
+  });
+  useEffect(() => {
+    if (!pages.includes(activePage)) setActivePage(pages[0]);
+  }, [pages, activePage]);
+
+  // One export node per present page, keyed by PageId. All present pages are
+  // rendered (off-screen staging) so every ref is live for export regardless of
+  // which page the preview is showing.
+  const pageRefs = useRef<Record<PageId, HTMLDivElement | null>>({
+    foundation: null,
+    applications: null,
+    social: null,
+  });
 
   useEffect(() => {
     ensureBoardFontsLoaded();
@@ -71,7 +97,6 @@ function BrandBoardInner() {
     [data.headingFont, data.bodyFont],
   );
 
-  // Load whatever fonts the current board uses (presets or payload-provided).
   useEffect(() => {
     loadFontFamilies(fontFamilies);
   }, [fontFamilies]);
@@ -89,11 +114,8 @@ function BrandBoardInner() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
 
-  // Save As: prefer the File System Access API (a real OS Save dialog where the
-  // user picks BOTH the folder and the filename — Chrome/Edge). Fall back to a
-  // filename modal + plain download where that API isn't available.
   const saveProject = async () => {
-    const json = serializeProject(data, layout, new Date().toISOString());
+    const json = serializeProject(data, new Date().toISOString());
     const suggested = projectFileName(data.kitName);
 
     const picker = (
@@ -120,7 +142,6 @@ function BrandBoardInner() {
         await writable.close();
         message.success("Project saved");
       } catch (err) {
-        // User cancelled the dialog — do nothing, no error toast.
         if ((err as Error)?.name !== "AbortError") {
           message.error("Save failed — try again.");
         }
@@ -128,13 +149,12 @@ function BrandBoardInner() {
       return;
     }
 
-    // Fallback: ask for a filename in a modal, then download.
     setSaveName(suggested.replace(/\.json$/, ""));
     setSaveModalOpen(true);
   };
 
   const doFallbackSave = () => {
-    const json = serializeProject(data, layout, new Date().toISOString());
+    const json = serializeProject(data, new Date().toISOString());
     const blob = new Blob([json], { type: "application/json" });
     const name = (saveName.trim() || "brand-kit").replace(/\.json$/, "");
     triggerDownload(blob, `${name}.json`);
@@ -148,7 +168,6 @@ function BrandBoardInner() {
       const loaded = parseProject(reader.result as string);
       if (loaded) {
         setData(loaded.board);
-        setLayout(loaded.layout);
         message.success("Project loaded");
       } else {
         message.error("That isn't a Brand Board project file.");
@@ -157,21 +176,37 @@ function BrandBoardInner() {
     reader.readAsText(file);
   };
 
+  // Collect the live page nodes in canonical order, dropping any not yet mounted.
+  const collectNodes = (): HTMLDivElement[] =>
+    pages.map((p) => pageRefs.current[p]).filter((n): n is HTMLDivElement => n !== null);
+
+  const safeName = () =>
+    (data.kitName || "brand-board").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+
   const doExport = async (kind: "png" | "pdf") => {
-    if (!boardRef.current) return;
+    const nodes = collectNodes();
+    if (nodes.length === 0) return;
     setExporting(kind);
     try {
-      const safe = (data.kitName || "brand-board")
-        .replace(/[^a-z0-9-_]+/gi, "-")
-        .toLowerCase();
+      const base = safeName();
       if (kind === "png") {
-        const blob = await boardToPngBlob(boardRef.current, fontFamilies);
-        triggerDownload(blob, `${safe}-brand-board.png`);
+        // One PNG per page — exactly the gallery images. Named by page so the
+        // set drops straight into a Fiverr gallery in order.
+        const blobs = await pagesToPngBlobs(nodes, fontFamilies);
+        blobs.forEach((blob, i) => {
+          const page = pages[i];
+          const meta = PAGE_META[page];
+          const label = meta.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+          triggerDownload(blob, `${base}-${meta.index}-${label}.png`);
+        });
+        message.success(
+          blobs.length === 1 ? "Page downloaded" : `${blobs.length} pages downloaded`,
+        );
       } else {
-        const blob = await boardToPdfBlob(boardRef.current, fontFamilies);
-        triggerDownload(blob, `${safe}-brand-board.pdf`);
+        const blob = await pagesToPdfBlob(nodes, fontFamilies);
+        triggerDownload(blob, `${base}-brand-board.pdf`);
+        message.success("PDF downloaded");
       }
-      message.success(`${kind.toUpperCase()} downloaded`);
     } catch {
       message.error("Export failed — please try again.");
     } finally {
@@ -179,7 +214,7 @@ function BrandBoardInner() {
     }
   };
 
-  // Scale the full-size board down to fit the preview column width.
+  // Scale the full-size page down to fit the preview column width.
   const [previewWidth, setPreviewWidth] = useState(560);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -193,20 +228,6 @@ function BrandBoardInner() {
     return () => ro.disconnect();
   }, []);
   const scale = previewWidth / BOARD_W;
-
-  // The board grows to fit its content, so measure its real height to reserve
-  // the correct preview space (no clipping) and to size the export.
-  const [boardHeight, setBoardHeight] = useState(BOARD_H);
-  useEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const h = el.scrollHeight;
-      if (h > 0) setBoardHeight(h);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const projectButtons = (
     <>
@@ -236,8 +257,9 @@ function BrandBoardInner() {
         onClick={() => doExport("png")}
         loading={exporting === "png"}
         disabled={!hasContent || exporting !== null}
+        title={pages.length > 1 ? "Download one PNG per page" : "Download the page as a PNG"}
       >
-        PNG
+        {pages.length > 1 ? `PNGs (${pages.length})` : "PNG"}
       </Button>
       <Button
         type="primary"
@@ -245,10 +267,36 @@ function BrandBoardInner() {
         onClick={() => doExport("pdf")}
         loading={exporting === "pdf"}
         disabled={!hasContent || exporting !== null}
+        title="Download the whole kit as one PDF"
       >
         PDF
       </Button>
     </Space>
+  );
+
+  // A page node rendered at full intrinsic size, wrapped so it can be scaled or
+  // parked off-screen. `visible` pages sit in the preview; the rest stage off
+  // the canvas so their refs stay live for export without showing.
+  const renderPage = (page: PageId, pageNumber: number, visible: boolean) => (
+    <div
+      key={page}
+      style={
+        visible
+          ? { width: BOARD_W, transform: `scale(${scale})`, transformOrigin: "top left" }
+          : { position: "absolute", left: -99999, top: 0, width: BOARD_W }
+      }
+      aria-hidden={!visible}
+    >
+      <BrandPage
+        ref={(el) => {
+          pageRefs.current[page] = el;
+        }}
+        data={data}
+        page={page}
+        pageNumber={pageNumber}
+        totalPages={pages.length}
+      />
+    </div>
   );
 
   return (
@@ -293,17 +341,27 @@ function BrandBoardInner() {
           }}
         >
           <Card styles={{ body: { padding: 20 } }}>
-            <BoardForm
-              data={data}
-              onChange={setData}
-              layout={layout}
-              onLayoutChange={setLayout}
-            />
+            <BoardForm data={data} onChange={setData} activePage={activePage} />
           </Card>
 
-          {/* minWidth:0 lets this 1fr grid track shrink below the board's
+          {/* minWidth:0 lets this 1fr grid track shrink below the page's
               intrinsic 1600px width instead of forcing the page wide. */}
           <div style={{ minWidth: 0 }}>
+            {/* Page switcher — flip between the pages that have content. */}
+            {pages.length > 1 && (
+              <div style={{ marginBottom: 14 }}>
+                <Segmented
+                  block
+                  value={activePage}
+                  onChange={(v) => setActivePage(v as PageId)}
+                  options={pages.map((p) => ({
+                    label: `${PAGE_META[p].index} · ${PAGE_META[p].title}`,
+                    value: p,
+                  }))}
+                />
+              </div>
+            )}
+
             <div
               ref={previewWrapRef}
               style={{
@@ -312,18 +370,21 @@ function BrandBoardInner() {
                 overflow: "hidden",
                 boxShadow: "0 18px 60px rgba(0,0,0,0.18)",
                 background: "#e9e6de",
-                // Reserve the REAL scaled board height so nothing clips.
-                height: boardHeight * scale,
+                // Fixed poster proportion — the visible page is always 4:5.
+                height: BOARD_H * scale,
+                position: "relative",
               }}
             >
-              <div
-                style={{
-                  width: BOARD_W,
-                  transform: `scale(${scale})`,
-                  transformOrigin: "top left",
-                }}
-              >
-                <BrandBoard ref={boardRef} data={data} layout={layout} />
+              {/* The visible (active) page, scaled into the preview. */}
+              {renderPage(activePage, pages.indexOf(activePage) + 1, true)}
+
+              {/* Off-screen staging: every OTHER present page, rendered at full
+                  size so its ref is live and export can rasterize it without the
+                  user having to switch to it first. */}
+              <div style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+                {pages
+                  .filter((p) => p !== activePage)
+                  .map((p) => renderPage(p, pages.indexOf(p) + 1, false))}
               </div>
             </div>
 

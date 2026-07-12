@@ -20,20 +20,14 @@ export interface BrandBoardProjectFile {
   type: typeof PROJECT_TYPE;
   v: 1;
   savedAt: string; // ISO timestamp, stamped at save time
-  layout: LayoutId;
-  board: BrandBoardData;
+  board: BrandBoardData; // per-page layouts now live inside board.pageLayouts
 }
 
-export function serializeProject(
-  board: BrandBoardData,
-  layout: LayoutId,
-  savedAtIso: string,
-): string {
+export function serializeProject(board: BrandBoardData, savedAtIso: string): string {
   const file: BrandBoardProjectFile = {
     type: PROJECT_TYPE,
     v: 1,
     savedAt: savedAtIso,
-    layout,
     board,
   };
   return JSON.stringify(file, null, 2);
@@ -41,7 +35,6 @@ export function serializeProject(
 
 export interface LoadedProject {
   board: BrandBoardData;
-  layout: LayoutId;
 }
 
 /** Parse a project file's text. Null if it isn't a Brand Board project. */
@@ -58,10 +51,16 @@ export function parseProject(text: string): LoadedProject | null {
   if (typeof r.board !== "object" || r.board === null) return null;
 
   // Merge onto a fresh empty board so a file saved by an older version (missing
-  // newer fields) still loads with sensible defaults.
+  // newer fields) still loads with sensible defaults — including pageLayouts.
   const board: BrandBoardData = { ...emptyBoard(), ...(r.board as Partial<BrandBoardData>) };
-  const layout = (typeof r.layout === "string" ? r.layout : "editorial") as LayoutId;
-  return { board, layout };
+
+  // Legacy migration: pre-multi-page files stored one top-level `layout`. Fold it
+  // into the Foundation page so an old client project reopens looking the same.
+  if (typeof r.layout === "string" && !(r.board as Record<string, unknown>).pageLayouts) {
+    board.pageLayouts = { ...board.pageLayouts, foundation: r.layout as LayoutId };
+  }
+
+  return { board };
 }
 
 export function projectFileName(kitName: string): string {

@@ -1,3 +1,5 @@
+import type { LayoutId } from "./layouts";
+
 // The data model for a brand board. Brand Board is a CONSUMER: it holds the
 // assets a user pastes/uploads from the other Opsette tools (per
 // BRAND-KIT-INTEROP-CONTRACT.md) and composes them into one designed page.
@@ -49,6 +51,24 @@ export interface BrandRoles {
   border: string;
 }
 
+/**
+ * The board is a multi-PAGE deliverable. Each page is its own fixed-size poster
+ * with its own layout setting:
+ *   - foundation   → colors + fonts (palette, ramps, roles, type, in-use mock)
+ *   - applications → email signature, QR, digital card
+ *   - social       → social banners, avatar, favicon, brand assets
+ * A page only appears when it has content, so a minimal kit is a single page.
+ */
+export type PageId = "foundation" | "applications" | "social";
+
+export const PAGE_ORDER: PageId[] = ["foundation", "applications", "social"];
+
+export const PAGE_META: Record<PageId, { index: string; title: string }> = {
+  foundation: { index: "01", title: "Foundation" },
+  applications: { index: "02", title: "Applications" },
+  social: { index: "03", title: "Social & Assets" },
+};
+
 export interface BrandBoardData {
   kitName: string;
   tagline: string;
@@ -99,6 +119,12 @@ export interface BrandBoardData {
     card: string | null;
     social: string | null;
   };
+
+  // ---- Per-page layout ----
+  // Each page owns its own layout so a killer Foundation layout (Overlap) can
+  // differ from the plainer Applications/Social pages — and new per-page layouts
+  // slot in here without touching the rest of the app.
+  pageLayouts: Record<PageId, LayoutId>;
 }
 
 // A brand board shows the brand's actual palette colors. In custom ("my own
@@ -124,6 +150,14 @@ export function emptyBoard(): BrandBoardData {
     cardDataUrl: null,
     socialAssets: [],
     sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null },
+    pageLayouts: {
+      // Overlap is the one layout that genuinely composes (it layers the palette)
+      // — make it the Foundation default. The other pages stack until they earn
+      // their own real layouts.
+      foundation: "overlap",
+      applications: "stack",
+      social: "stack",
+    },
   };
 }
 
@@ -150,6 +184,31 @@ export function blockPresence(b: BrandBoardData): BlockPresence {
     card: b.cardDataUrl !== null,
     social: b.socialAssets.length > 0,
   };
+}
+
+/**
+ * Which pages have content, in canonical order. Foundation is always present
+ * (type + hero always exist); Applications appears with a signature/QR/card;
+ * Social appears with any social/brand asset. A minimal kit is one page.
+ */
+export function presentPages(b: BrandBoardData): PageId[] {
+  const p = blockPresence(b);
+  const pages: PageId[] = ["foundation"]; // always — palette/type/hero live here
+  if (p.signature || p.qr || p.card) pages.push("applications");
+  if (p.social) pages.push("social");
+  return pages;
+}
+
+/** The blocks that belong to each page (used by BrandPage to render its slice). */
+export function pageBlocks(page: PageId): (keyof BlockPresence)[] {
+  switch (page) {
+    case "foundation":
+      return ["palette", "type", "context"];
+    case "applications":
+      return ["signature", "qr", "card"];
+    case "social":
+      return ["social"];
+  }
 }
 
 export function boardHasContent(b: BrandBoardData): boolean {

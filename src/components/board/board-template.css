@@ -32,6 +32,21 @@
   padding-bottom: 150px;
 }
 
+/* ---- Fixed-size PAGE ------------------------------------------------------
+   In the multi-page model every page is one uniform poster: exactly 1600×2000,
+   clipped, never grown. This is what makes the exported set a clean run of
+   same-size gallery images (vs. the old single grow-to-fit board). The footer
+   stays absolutely positioned (so layouts like Overlap can still pull blocks up
+   OVER the hero with negative margins — a flex column would clip that). Content
+   is composed to fit; the fix for footer collisions is fitting the content, not
+   restructuring the page. */
+.bb-page {
+  height: var(--bb-h);
+  min-height: var(--bb-h);
+  max-height: var(--bb-h);
+  overflow: hidden;
+}
+
 /* ---- Hero ---------------------------------------------------------------- */
 .bb-hero {
   position: relative;
@@ -212,7 +227,7 @@
 .bb-type-heading-sample {
   font-family: var(--bb-heading-font, "Playfair Display"), Georgia, serif;
   font-weight: 700;
-  font-size: 190px;
+  font-size: 120px;
   line-height: 0.8;
   color: var(--bb-ink, #1a1714);
   margin: 0;
@@ -239,6 +254,38 @@
   border-top: 2px solid var(--bb-hairline, #e2dccf);
   padding-top: 28px;
 }
+
+/* ---- Typography, side by side --------------------------------------------
+   Heading specimen (left) and body specimen (right) share one row instead of
+   stacking into two tall rows. Reads as a real type system and reclaims the
+   vertical space that was pushing Foundation into its footer. */
+.bb-block-type {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "label label"
+    "heading body";
+  column-gap: 72px;
+  row-gap: 0;
+  align-items: start;
+}
+.bb-block-type > .bb-block-label {
+  grid-area: label;
+}
+.bb-block-type > .bb-type-heading-block {
+  grid-area: heading;
+  align-self: center;
+}
+.bb-block-type > .bb-type-body-block {
+  grid-area: body;
+  /* Now a column neighbor, not a stacked row: drop the top border/indent, add a
+     left rule to separate the two specimens. */
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+  border-left: 2px solid var(--bb-hairline, #e2dccf);
+  padding-left: 72px;
+}
 .bb-type-body-sample {
   font-family: var(--bb-body-font, "Inter"), sans-serif;
   font-size: 34px;
@@ -248,53 +295,55 @@
   margin: 0 0 14px;
 }
 
-/* ---- In-context mock ----------------------------------------------------- */
+/* ---- In-context mock -----------------------------------------------------
+   Tightened so it sits comfortably at the bottom of Foundation and clears the
+   footer (it was overflowing into it). Same composition, less air. */
 .bb-mock {
   border-radius: 18px;
   border: 2px solid;
-  padding: 46px;
+  padding: 34px;
   box-sizing: border-box;
 }
 .bb-mock-card {
   border-radius: 14px;
   border: 1px solid;
-  padding: 40px 44px;
+  padding: 30px 36px;
   max-width: 900px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
 }
 .bb-mock-eyebrow {
   font-family: var(--bb-body-font, "Inter"), sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   display: block;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .bb-mock-heading {
   font-family: var(--bb-heading-font, "Playfair Display"), Georgia, serif;
-  font-size: 58px;
+  font-size: 46px;
   line-height: 1.05;
   font-weight: 700;
-  margin: 0 0 20px;
+  margin: 0 0 14px;
 }
 .bb-mock-body {
   font-family: var(--bb-body-font, "Inter"), sans-serif;
-  font-size: 30px;
-  line-height: 1.5;
-  margin: 0 0 14px;
+  font-size: 26px;
+  line-height: 1.45;
+  margin: 0 0 10px;
 }
 .bb-mock-muted {
   font-family: var(--bb-body-font, "Inter"), sans-serif;
-  font-size: 24px;
-  margin: 0 0 34px;
+  font-size: 22px;
+  margin: 0 0 22px;
 }
 .bb-mock-button {
   display: inline-block;
   font-family: var(--bb-body-font, "Inter"), sans-serif;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
-  padding: 18px 40px;
+  padding: 15px 34px;
   border-radius: 12px;
 }
 
@@ -385,12 +434,15 @@
   flex-direction: column;
   gap: 12px;
 }
+/* Assets are ZOOMED OUT: their true dimensions ride along as metadata (for the
+   real separate export), but on this high-level board every asset is capped to a
+   modest height and sized by its aspect ratio — so the client sees how the
+   banners look RELATIVE to each other without a 1584px banner eating the page.
+   Wide banners no longer force a full-width row; they sit at their capped size
+   and flow, wrapping as needed. */
 .bb-social-wide {
-  flex: 1 1 100%;
+  flex: 0 0 auto;
 }
-/* Each item is a column that shrinks to its content — so the frame (and its
-   label) hug the image at its NATURAL size. This preserves each banner's true
-   platform proportion (the point of the section) with no white gap. */
 .bb-social-item {
   align-items: flex-start;
 }
@@ -400,20 +452,22 @@
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
   background: #fff;
   line-height: 0;
-  /* Hug the image, never stretch past it (that was the white bar). */
   display: inline-block;
   max-width: 100%;
 }
 .bb-social-frame img {
   display: block;
-  max-width: 100%;
   height: auto;
-}
-/* Compact (non-wide) assets get a capped height so favicons/avatars don't blow
-   up. Wide banners render at their natural width (capped to the row). */
-.bb-social-item:not(.bb-social-wide) .bb-social-frame img {
-  max-height: 220px;
+  /* Cap by height and let width follow the aspect ratio → true relative
+     proportions at a small, page-friendly size. */
+  max-height: 260px;
   width: auto;
+  max-width: 640px; /* keep a very wide banner from still running off */
+}
+/* Compact (non-wide) assets — avatar, favicon — stay small so they read as the
+   little things they are next to the banners. */
+.bb-social-item:not(.bb-social-wide) .bb-social-frame img {
+  max-height: 160px;
 }
 .bb-social-label {
   font-family: var(--bb-body-font, "Inter"), sans-serif;
@@ -488,12 +542,14 @@
    the signature tile PULL UP over the hero edge, layering the composition.
    ========================================================================= */
 .bb-layout-overlap .bb-hero {
-  height: 760px;
-  padding: 80px 96px;
+  /* Shorter than before so the page has room for palette + type + In-Use below.
+     Still tall enough that the palette can layer over its lower edge. */
+  height: 600px;
+  padding: 72px 96px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 60px;
+  gap: 40px;
 }
 .bb-layout-overlap .bb-hero::after {
   right: -200px;
@@ -508,21 +564,28 @@
   padding: 0 96px 0;
   display: flex;
   flex-direction: column;
-  gap: 60px;
+  gap: 44px;
 }
-/* Palette bleeds up over the hero's lower edge. */
+/* Palette bleeds up over the hero's lower edge — pulled a little tighter to the
+   header so the section sits close and the page keeps room for In-Use below. */
 .bb-layout-overlap .bb-block-palette {
-  margin-top: -170px;
+  margin-top: -150px;
   z-index: 3;
 }
+/* The palette label sits on the hero as it overlaps. Use the hero's OWN readable
+   ink (computed from the hero color's lightness) instead of hardcoded white —
+   otherwise a light hero (e.g. a near-white primary) swallows a white label.
+   --bb-hero-ink is #fff on dark heroes and #1a1714 on light ones. */
 .bb-layout-overlap .bb-block-palette .bb-block-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--bb-hero-ink, #fff);
+  opacity: 0.85;
 }
 .bb-layout-overlap .bb-block-palette .bb-block-label::after {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--bb-hero-ink, #fff);
+  opacity: 0.3;
 }
 .bb-layout-overlap .bb-swatch {
-  height: 240px;
+  height: 196px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.22);
 }
 .bb-layout-overlap .bb-block-type {
@@ -667,3 +730,130 @@
 .bb-layout-poster .bb-block-qr {
   align-items: flex-start;
 }
+
+/* =========================================================================
+   LAYOUT — STACKED: the default for the Applications and Social pages. A clean
+   color header (shorter than editorial's) followed by tidy, evenly-stacked
+   sections. Honest and calm — the pages that don't yet have a composed layout
+   of their own read as a deliberate, consistent set rather than an afterthought.
+   ========================================================================= */
+.bb-layout-stack .bb-hero {
+  height: 460px;
+  padding: 78px 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.bb-layout-stack .bb-hero::after {
+  right: -240px;
+  bottom: -300px;
+  width: 680px;
+  height: 680px;
+}
+.bb-layout-stack .bb-hero-name {
+  font-size: 104px;
+}
+.bb-layout-stack .bb-hero-tagline {
+  font-size: 28px;
+  margin-top: 16px;
+}
+.bb-layout-stack .bb-body {
+  padding: 66px 96px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+}
+
+/* ---- Compact secondary-page header --------------------------------------
+   Foundation shows the full brand hero. Applications and Social don't need to
+   re-state it at full size — that big block just eats the vertical room their
+   content needs (and pushed the grid into the footer). On those pages the hero
+   collapses to a slim header BAND: small logo + wordmark on one line with the
+   page label, ~150px tall instead of 460px. Brand continuity, none of the bulk.
+   (Foundation is never targeted here, so its hero is untouched.) */
+.bb-page-applications .bb-hero,
+.bb-page-social .bb-hero {
+  height: auto;
+  min-height: 0;
+  padding: 44px 96px;
+  flex-direction: row;
+  align-items: center;
+  gap: 32px;
+}
+.bb-page-applications .bb-hero::after,
+.bb-page-social .bb-hero::after {
+  display: none; /* drop the big decorative circle on the slim band */
+}
+/* The label + wordmark sit inline; the logo floats to the right. */
+.bb-page-applications .bb-hero-top,
+.bb-page-social .bb-hero-top {
+  order: 2;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 28px;
+}
+.bb-page-applications .bb-hero-title,
+.bb-page-social .bb-hero-title {
+  order: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+}
+.bb-page-applications .bb-hero-name,
+.bb-page-social .bb-hero-name {
+  font-size: 56px;
+  line-height: 1;
+}
+/* Tagline is redundant on the slim band — Foundation already carries it. */
+.bb-page-applications .bb-hero-tagline,
+.bb-page-social .bb-hero-tagline {
+  display: none;
+}
+/* The page label ("02 — Applications") sits on the band, right-aligned by the logo. */
+.bb-page-applications .bb-eyebrow,
+.bb-page-social .bb-eyebrow {
+  font-size: 20px;
+}
+.bb-page-applications .bb-logo-slot img,
+.bb-page-social .bb-logo-slot img {
+  max-height: 72px;
+  max-width: 180px;
+}
+/* With the slim header reclaiming ~300px, give the body its breathing room. */
+.bb-page-applications .bb-body,
+.bb-page-social .bb-body {
+  padding-top: 72px;
+}
+
+/* Applications page: signature is the star; the digital card and QR share the
+   row beneath it so all three read as one composed page (and fit the frame).
+   The body switches to a wrapping row and each block declares its share. */
+.bb-page-applications.bb-layout-stack .bb-body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 56px 64px;
+  align-content: flex-start;
+}
+/* Signature spans the full row; card + QR sit side by side under it. */
+.bb-page-applications .bb-block-signature {
+  flex: 1 1 100%;
+}
+.bb-page-applications .bb-block-card {
+  flex: 1 1 auto;
+}
+.bb-page-applications .bb-block-qr {
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+.bb-page-applications .bb-card-tile img {
+  max-height: 520px;
+  width: auto;
+}
+.bb-page-applications .bb-signature-scaler {
+  /* Slightly smaller than a lone board so the signature leaves room for the
+     card + QR row below it on the same fixed page. */
+  zoom: 1.6;
+}
+
