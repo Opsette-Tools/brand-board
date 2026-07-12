@@ -145,6 +145,19 @@ export interface BrandBoardData {
   // differ from the plainer Applications/Social pages — and new per-page layouts
   // slot in here without touching the rest of the app.
   pageLayouts: Record<PageId, LayoutId>;
+
+  // ---- The board's OWN rendered pages (self-inclusion) ----
+  // Brand Board consumes every other tool's finished picture (qrDataUrl,
+  // cardDataUrl, socialAssets…) but its own designed pages historically only
+  // ever existed as a live download at export time — they were never SAVED, so
+  // they couldn't ride inside the one kit file, and File Builder (which can't
+  // draw) had nothing to put in the zip. This holds a frozen PNG of each present
+  // page, captured at Save time (the natural "freeze moment" — nothing's moving),
+  // keyed by PageId as a base64 data URL. Sits BESIDE the raw assets, not
+  // wrapping them: the QR still lives alone in qrDataUrl AND baked into the
+  // Applications page picture here. Empty until the first Save.
+  // (A combined multi-page PDF — pagesPdf — is planned next, rebuilt from these.)
+  pageRenders: Partial<Record<PageId, string>>; // data:image/png;base64,...
 }
 
 // A brand board shows the brand's actual palette colors. In custom ("my own
@@ -184,6 +197,8 @@ export function emptyBoard(): BrandBoardData {
       // so its layout id is a placeholder — kept only to satisfy the per-page map.
       guide: "stack",
     },
+    // No frozen page pictures until the first Save takes them.
+    pageRenders: {},
   };
 }
 

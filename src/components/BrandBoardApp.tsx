@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App as AntApp, Button, Card, Grid, Input, Modal, Segmented, Space, Typography, message } from "antd";
+import { App as AntApp, Button, Card, Grid, Input, Modal, Segmented, Space, Steps, Typography, message } from "antd";
 import {
   FilePdfOutlined,
   FileImageOutlined,
   SaveOutlined,
   FolderOpenOutlined,
+  LoadingOutlined,
+  CheckCircleFilled,
 } from "@ant-design/icons";
 import { ThemeProvider } from "@/lib/theme";
 import Shell from "@/components/Shell";
@@ -29,6 +31,7 @@ import {
   BOARD_H,
   pagesToPngBlobs,
   pagesToPdfBlob,
+  freezePageRenders,
 } from "@/components/board/exportBoard";
 
 const { Text } = Typography;
@@ -61,6 +64,21 @@ function BrandBoardInner() {
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
+
+  // The two-step Save flow's visible state. Save is deliberately NOT a silent
+  // background operation: step 1 freezes the board's own pages into pictures
+  // (takes a beat — fonts must paint, each page rasterizes), step 2 writes the
+  // now-complete kit file. The modal shows both steps so the user knows real work
+  // is happening and Save never races itself into writing blank pages.
+  //   phase 0 = idle (modal closed)
+  //   phase 1 = rendering pages (step 1 active)
+  //   phase 2 = writing file (step 1 done, step 2 active)
+  //   phase 3 = done
+  const [savePhase, setSavePhase] = useState<0 | 1 | 2 | 3>(0);
+  const [saveProgress, setSaveProgress] = useState<{ done: number; total: number }>({
+    done: 0,
+    total: 0,
+  });
 
   // Which pages have content, in canonical order. The preview and the page
   // switcher only show these; export only rasterizes these.
@@ -104,7 +122,14 @@ function BrandBoardInner() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      // Keep the frozen page pictures OUT of the localStorage draft: they can be
+      // several MB of base64 and would risk blowing the ~5MB quota, which would
+      // silently kill persistence of the whole draft (even ordinary edits). They
+      // only need to live in the saved kit FILE, not the autosave draft — so
+      // they're re-frozen fresh on every Save anyway. Strip before persisting.
+      const { pageRenders: _omit, ...draft } = data;
+      void _omit;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {
       /* ignore */
     }
@@ -115,52 +140,85 @@ function BrandBoardInner() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
 
+  type SavePicker = (opts: unknown) => Promise<{
+    createWritable: () => Promise<{
+      write: (d: string) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
+  }>;
+
   const saveProject = async () => {
-    const json = serializeProject(data, new Date().toISOString());
     const suggested = projectFileName(data.kitName);
+    const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
 
-    const picker = (
-      window as unknown as {
-        showSaveFilePicker?: (opts: unknown) => Promise<{
-          createWritable: () => Promise<{
-            write: (d: string) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
-        }>;
-      }
-    ).showSaveFilePicker;
-
+    // The file-picker must open inside the click gesture, so ask for the file
+    // handle FIRST (before the async freeze), then do the two visible steps and
+    // write into the handle we already hold. Browsers without the picker fall
+    // through to the named-download modal, which runs the same two steps.
     if (picker) {
+      let handle: Awaited<ReturnType<SavePicker>>;
       try {
-        const handle = await picker({
+        handle = await picker({
           suggestedName: suggested,
           types: [
             { description: "Brand Board project", accept: { "application/json": [".json"] } },
           ],
         });
+      } catch (err) {
+        if ((err as Error)?.name !== "AbortError") message.error("Save failed — try again.");
+        return;
+      }
+
+      try {
+        // STEP 1 — freeze the board's own pages into the blob (visible).
+        setSavePhase(1);
+        const frozen = await freezeIntoBoard();
+
+        // STEP 2 — write the now-complete kit file.
+        setSavePhase(2);
+        const json = serializeProject(frozen, new Date().toISOString());
         const writable = await handle.createWritable();
         await writable.write(json);
         await writable.close();
-        message.success("Project saved");
-      } catch (err) {
-        if ((err as Error)?.name !== "AbortError") {
-          message.error("Save failed — try again.");
-        }
+
+        setSavePhase(3);
+        // Let the finished tick sit briefly, then close.
+        window.setTimeout(() => setSavePhase(0), 900);
+        message.success("Kit saved — your pages are baked in");
+      } catch {
+        setSavePhase(0);
+        message.error("Save failed — try again.");
       }
       return;
     }
 
+    // No file-picker (Firefox/Safari): collect a name, then run the two steps and
+    // download. Freeze happens in doFallbackSave once the name is confirmed.
     setSaveName(suggested.replace(/\.json$/, ""));
     setSaveModalOpen(true);
   };
 
-  const doFallbackSave = () => {
-    const json = serializeProject(data, new Date().toISOString());
-    const blob = new Blob([json], { type: "application/json" });
-    const name = (saveName.trim() || "brand-kit").replace(/\.json$/, "");
-    triggerDownload(blob, `${name}.json`);
+  const doFallbackSave = async () => {
     setSaveModalOpen(false);
-    message.success("Project saved to your Downloads");
+    try {
+      // STEP 1 — freeze (visible).
+      setSavePhase(1);
+      const frozen = await freezeIntoBoard();
+
+      // STEP 2 — write the download.
+      setSavePhase(2);
+      const json = serializeProject(frozen, new Date().toISOString());
+      const blob = new Blob([json], { type: "application/json" });
+      const name = (saveName.trim() || "brand-kit").replace(/\.json$/, "");
+      triggerDownload(blob, `${name}.json`);
+
+      setSavePhase(3);
+      window.setTimeout(() => setSavePhase(0), 900);
+      message.success("Kit saved to your Downloads — your pages are baked in");
+    } catch {
+      setSavePhase(0);
+      message.error("Save failed — try again.");
+    }
   };
 
   const openProjectFile = (file: File) => {
@@ -180,6 +238,33 @@ function BrandBoardInner() {
   // Collect the live page nodes in canonical order, dropping any not yet mounted.
   const collectNodes = (): HTMLDivElement[] =>
     pages.map((p) => pageRefs.current[p]).filter((n): n is HTMLDivElement => n !== null);
+
+  // Same, but keeps each node paired with its PageId — needed to key the frozen
+  // page pictures back to the page they came from at Save time.
+  const collectPageNodes = (): { page: PageId; node: HTMLDivElement }[] =>
+    pages
+      .map((p) => ({ page: p, node: pageRefs.current[p] }))
+      .filter((e): e is { page: PageId; node: HTMLDivElement } => e.node !== null);
+
+  // STEP 1 of Save — the freeze. Photograph every present page into a base64 PNG
+  // and fold the result into the board as `pageRenders`, so the blob we're about
+  // to write already carries Brand Board's own pages (self-inclusion). Returns
+  // the board WITH the renders baked in. Awaits every capture, so when it
+  // resolves the pictures are fully developed — no blank-page race.
+  const freezeIntoBoard = async (): Promise<BrandBoardData> => {
+    const entries = collectPageNodes();
+    setSaveProgress({ done: 0, total: entries.length });
+    const pageRenders = await freezePageRenders(entries, fontFamilies, (done, total) =>
+      setSaveProgress({ done, total }),
+    );
+    const frozen = { ...data, pageRenders };
+    // Keep in-memory state consistent with what we're about to write. (These
+    // renders are intentionally stripped from the localStorage draft — see the
+    // persist effect — so this doesn't bloat autosave; step 2 writes from the
+    // `frozen` value directly, not from async state, so there's no timing race.)
+    setData(frozen);
+    return frozen;
+  };
 
   const safeName = () =>
     (data.kitName || "brand-board").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
@@ -342,6 +427,61 @@ function BrandBoardInner() {
           onPressEnter={doFallbackSave}
           autoFocus
         />
+      </Modal>
+
+      {/* The two-step Save tracker. Deliberately visible: the freeze takes a
+          real beat, and this shows the user the two things happening (rendering
+          the pages into the kit, then writing the file) so Save reads as careful
+          work, not a hang. Not dismissible mid-run — the steps are quick and
+          interrupting only means re-saving (the frozen pages are already in the
+          draft by then, so nothing is lost). */}
+      <Modal
+        title="Saving your kit"
+        open={savePhase !== 0}
+        footer={null}
+        closable={false}
+        maskClosable={false}
+        width={440}
+      >
+        <div style={{ padding: "8px 4px 4px" }}>
+          <Steps
+            direction="vertical"
+            size="small"
+            current={savePhase === 1 ? 0 : 1}
+            items={[
+              {
+                title: "Rendering your pages",
+                description:
+                  savePhase === 1
+                    ? saveProgress.total > 0
+                      ? `Baking page ${saveProgress.done} of ${saveProgress.total} into the kit…`
+                      : "Preparing…"
+                    : "Your designed pages are baked into the kit file.",
+                icon:
+                  savePhase === 1 ? (
+                    <LoadingOutlined />
+                  ) : (
+                    <CheckCircleFilled style={{ color: "#52c41a" }} />
+                  ),
+              },
+              {
+                title: "Writing your kit file",
+                description:
+                  savePhase >= 3
+                    ? "Saved. One file, everything inside."
+                    : savePhase === 2
+                      ? "Writing the file…"
+                      : "Waiting for the pages to finish.",
+                icon:
+                  savePhase === 2 ? (
+                    <LoadingOutlined />
+                  ) : savePhase >= 3 ? (
+                    <CheckCircleFilled style={{ color: "#52c41a" }} />
+                  ) : undefined,
+              },
+            ]}
+          />
+        </div>
       </Modal>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: isMobile ? "16px" : "24px 24px 48px", overflowX: "hidden" }}>
         <div

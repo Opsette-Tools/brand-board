@@ -1,6 +1,7 @@
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { waitForFonts } from "@/lib/fonts";
+import type { PageId } from "./board.types";
 
 // Each page renders at a FIXED intrinsic size (1600×2000, 4:5 portrait) so the
 // exported set is a run of uniform, gallery-ready posters. The fixed height is
@@ -65,6 +66,32 @@ export async function pagesToPngBlobs(
   const out: Blob[] = [];
   for (const node of nodes) {
     out.push(await pageToPngBlob(node, fontFamilies));
+  }
+  return out;
+}
+
+/**
+ * Freeze the board's OWN pages into base64 PNG strings, keyed by PageId — the
+ * self-inclusion capture. This is the exact same rasterization the PNG download
+ * uses (pageToPngDataUrl), just stored into the kit instead of downloaded, so
+ * Brand Board's designed pages ride inside the one .opsette-kit.json (and File
+ * Builder, which can't draw, finds finished pictures to drop in the zip).
+ *
+ * Runs sequentially and AWAITS every page, so the caller can trust that when
+ * this resolves, all captures are fully developed — the "wait for the photos"
+ * step that keeps Save from writing blank pages. `onProgress` reports which page
+ * (1-based) just finished, for a visible step tracker.
+ */
+export async function freezePageRenders(
+  entries: { page: PageId; node: HTMLElement }[],
+  fontFamilies: string[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Partial<Record<PageId, string>>> {
+  const out: Partial<Record<PageId, string>> = {};
+  for (let i = 0; i < entries.length; i++) {
+    const { page, node } = entries[i];
+    out[page] = await pageToPngDataUrl(node, fontFamilies);
+    onProgress?.(i + 1, entries.length);
   }
   return out;
 }
