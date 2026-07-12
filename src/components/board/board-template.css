@@ -394,14 +394,27 @@
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
   background: #fff;
   line-height: 0;
+  /* The frame hugs its content (image) rather than stretching wider than it —
+     otherwise a less-wide banner leaves a white gap in a full-row item. */
+  align-self: flex-start;
 }
 .bb-social-frame img {
   display: block;
   max-width: 100%;
   height: auto;
 }
+/* Wide banners fill the full row width edge-to-edge, so banners of DIFFERENT
+   aspect ratios (LinkedIn 4:1, Facebook 2.6:1) all present at a consistent
+   width — no ragged white bars. The frame stretches with the image here. */
+.bb-social-wide .bb-social-frame {
+  align-self: stretch;
+  width: 100%;
+}
+.bb-social-wide .bb-social-frame img {
+  width: 100%;
+}
 /* Compact (non-wide) assets get a capped height so favicons/avatars don't blow
-   up; banners (wide) fill the row width above. */
+   up, and the frame hugs them (no stretching). */
 .bb-social-item:not(.bb-social-wide) .bb-social-frame img {
   max-height: 220px;
   width: auto;
