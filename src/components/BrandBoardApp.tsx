@@ -27,6 +27,12 @@ import {
   projectFileName,
 } from "@/components/board/projectFile";
 import {
+  saveDraft,
+  loadDraft as loadDraftFromStore,
+  readLegacyLocalStorageDraft,
+  clearLegacyLocalStorageDraft,
+} from "@/lib/draftStore";
+import {
   BOARD_W,
   BOARD_H,
   pagesToPngBlobs,
@@ -37,17 +43,12 @@ import {
 
 const { Text } = Typography;
 
-const STORAGE_KEY = "brand-board-draft";
-
-function loadDraft(): BrandBoardData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...emptyBoard(), ...JSON.parse(raw) };
-  } catch {
-    /* ignore */
-  }
-  return emptyBoard();
-}
+// The autosave draft now lives in IndexedDB (see lib/draftStore), not
+// localStorage — a client's card/QR/palette blobs carry megabyte-scale images
+// that blow localStorage's ~5MB quota, whose silent failure was dropping the
+// source blobs on refresh. This key is only the OLD localStorage draft we
+// migrate from once.
+const LEGACY_STORAGE_KEY = "brand-board-draft";
 
 function triggerDownload(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -61,10 +62,38 @@ function triggerDownload(blob: Blob, fileName: string) {
 }
 
 function BrandBoardInner() {
-  const [data, setData] = useState<BrandBoardData>(loadDraft);
+  const [data, setData] = useState<BrandBoardData>(emptyBoard);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
+
+  // Hydrate the autosave draft from IndexedDB on mount (async — the store can't
+  // be read synchronously). Gate the persist effect on this so the empty initial
+  // state doesn't overwrite a saved draft before it loads. A one-time migration
+  // pulls any older localStorage draft into IndexedDB, then clears it.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let draft = await loadDraftFromStore<Partial<BrandBoardData>>();
+      if (!draft) {
+        const legacy = readLegacyLocalStorageDraft(LEGACY_STORAGE_KEY);
+        if (legacy && typeof legacy === "object") {
+          draft = legacy as Partial<BrandBoardData>;
+          // Fold the migrated draft into IndexedDB, then retire the old key.
+          void saveDraft({ ...emptyBoard(), ...draft });
+        }
+      }
+      clearLegacyLocalStorageDraft(LEGACY_STORAGE_KEY);
+      if (!cancelled) {
+        if (draft) setData({ ...emptyBoard(), ...draft });
+        setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // The two-step Save flow's visible state. Save is deliberately NOT a silent
   // background operation: step 1 freezes the board's own pages into pictures
@@ -122,20 +151,20 @@ function BrandBoardInner() {
   }, [fontFamilies]);
 
   useEffect(() => {
-    try {
-      // Keep the frozen page pictures AND the combined PDF OUT of the localStorage
-      // draft: together they're several MB of base64 and would risk blowing the
-      // ~5MB quota, which would silently kill persistence of the whole draft (even
-      // ordinary edits). They only need to live in the saved kit FILE, not the
-      // autosave draft — they're re-frozen fresh on every Save anyway. Strip first.
-      const { pageRenders: _pr, pagesPdf: _pdf, ...draft } = data;
-      void _pr;
-      void _pdf;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-    } catch {
-      /* ignore */
-    }
-  }, [data]);
+    // Don't autosave until the draft has hydrated, or the empty initial state
+    // would clobber a saved draft before it loads.
+    if (!hydrated) return;
+    // Keep the frozen page pictures AND the combined PDF OUT of the draft — they
+    // re-freeze fresh on every Save, only need to live in the saved kit FILE, and
+    // are the heaviest part of the board. Everything else (including the source
+    // blobs and their embedded images) persists as-is; IndexedDB has no ~5MB cap,
+    // so a megabyte-scale card/QR/palette blob rides in the draft without the
+    // silent quota drop that used to lose the blobs on refresh.
+    const { pageRenders: _pr, pagesPdf: _pdf, ...draft } = data;
+    void _pr;
+    void _pdf;
+    void saveDraft(draft);
+  }, [data, hydrated]);
 
   const hasContent = boardHasContent(data);
   const projectInputRef = useRef<HTMLInputElement>(null);

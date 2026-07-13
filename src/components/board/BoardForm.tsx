@@ -60,8 +60,22 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
     patch({ pageLayouts: { ...data.pageLayouts, [activePage]: id } });
   // Seed the paste fields from any already-imported blobs so a reloaded/opened
   // board shows exactly what was imported — the input is never a black hole.
+  // Re-seed whenever Open swaps in a DIFFERENT stored blob: a plain once-only
+  // useState initializer wouldn't update on reopen (this component reconciles
+  // rather than remounts), which is what made a reopened kit look empty even
+  // though the blob was loaded and the Copy button worked.
   const [paletteBlob, setPaletteBlob] = useState(data.sourceBlobs.palette ?? "");
+  const lastPaletteSeed = useRef(data.sourceBlobs.palette);
+  if (data.sourceBlobs.palette !== lastPaletteSeed.current) {
+    lastPaletteSeed.current = data.sourceBlobs.palette;
+    setPaletteBlob(data.sourceBlobs.palette ?? "");
+  }
   const [signatureBlob, setSignatureBlob] = useState(data.sourceBlobs.signature ?? "");
+  const lastSignatureSeed = useRef(data.sourceBlobs.signature);
+  if (data.sourceBlobs.signature !== lastSignatureSeed.current) {
+    lastSignatureSeed.current = data.sourceBlobs.signature;
+    setSignatureBlob(data.sourceBlobs.signature ?? "");
+  }
 
   const copyBlob = async (blob: string | null, label: string) => {
     if (!blob) return;
@@ -340,7 +354,6 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
                 imageKey="qrDataUrl"
                 ingest={ingestQrPayload}
                 assetLabel="QR"
-                uploadAccept="image/png,image/svg+xml"
               />
             ),
           },
@@ -356,7 +369,6 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
                 vcardKey="cardVcardDataUrl"
                 ingest={ingestCardPayload}
                 assetLabel="card"
-                uploadAccept="image/png,image/jpeg"
               />
             ),
           },
@@ -468,47 +480,17 @@ function RolesList({
   );
 }
 
-// --- Simple image drop with preview ------------------------------------------
-function ImageDrop({
-  current,
-  accept,
-  onPick,
-  onClear,
-  label,
-}: {
-  current: string | null;
-  accept: string;
-  onPick: (dataUrl: string) => void;
-  onClear: () => void;
-  label: string;
-}) {
-  return (
-    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-      <Upload
-        accept={accept}
-        showUploadList={false}
-        beforeUpload={(file) => {
-          readImage(file, (dataUrl) => onPick(dataUrl));
-          return false;
-        }}
-      >
-        <Button icon={<UploadOutlined />}>{current ? "Replace" : label}</Button>
-      </Upload>
-      {current && (
-        <>
-          <img src={current} alt="" style={{ height: 40, width: "auto", borderRadius: 4 }} />
-          <Button type="text" icon={<DeleteOutlined />} onClick={onClear} />
-        </>
-      )}
-    </div>
-  );
-}
-
 // --- Blob-first asset (QR / card) --------------------------------------------
 // Paste the app's "Export to Brand Board" blob: we STORE the whole blob (held,
 // re-copyable, archived in the project file, pasteable back into its app) AND,
-// if the blob carries a rendered image, show it on the board. If the blob has
-// no image, a small upload lets the user drop the downloaded PNG for the visual.
+// if the blob carries a rendered image, show it on the board.
+//
+// There is deliberately NO manual image-upload fallback. QR Creator and Digital
+// Card both bake `data.image` INTO the blob now (per the interop contract), so a
+// single paste always brings the picture with it. The old upload path was the
+// one place an image could be set WITHOUT its blob (image present, blob null →
+// nothing to re-copy on reopen) — exactly the persistence gap this asset is
+// meant to close. One blob in, one blob out: image and blob never diverge.
 function BlobAsset({
   data,
   onChange,
@@ -517,7 +499,6 @@ function BlobAsset({
   vcardKey,
   ingest,
   assetLabel,
-  uploadAccept,
 }: {
   data: BrandBoardData;
   onChange: (next: BrandBoardData) => void;
@@ -527,10 +508,19 @@ function BlobAsset({
   vcardKey?: "cardVcardDataUrl";
   ingest: (input: string) => { image: string | null; vcard?: string | null; ok: boolean };
   assetLabel: string;
-  uploadAccept: string;
 }) {
-  const [blob, setBlob] = useState(data.sourceBlobs[assetKey] ?? "");
+  // Seed the paste field from the stored blob, and re-seed it whenever a reopen
+  // swaps in a different stored blob — so opening a saved kit shows the exact
+  // blob that came back, not a stale/empty box. (A plain once-only useState
+  // initializer wouldn't update on Open, since this component reconciles rather
+  // than remounts.)
   const storedBlob = data.sourceBlobs[assetKey];
+  const [blob, setBlob] = useState(storedBlob ?? "");
+  const lastSeeded = useRef(storedBlob);
+  if (storedBlob !== lastSeeded.current) {
+    lastSeeded.current = storedBlob;
+    setBlob(storedBlob ?? "");
+  }
   const image = data[imageKey];
 
   const doImport = () => {
@@ -597,35 +587,18 @@ function BlobAsset({
       </Space>
       {storedBlob && (
         <Text type="success" style={{ fontSize: 12 }}>
-          ✓ Data saved with the board.
+          ✓ {assetLabel} saved with the board — reopen anytime and copy it back into{" "}
+          {assetLabel === "QR" ? "QR Creator" : "Digital Card"}.
         </Text>
       )}
-      {/* If there's no image yet, prompt clearly to upload the downloaded one.
-          A config-only blob (no rendered image) leaves nothing to SHOW on the
-          board until the user drops the image here — so make it a callout, not
-          a whisper. */}
-      {!image && (
-        <div
-          style={{
-            border: "1px solid #ffd591",
-            background: "#fffbe6",
-            borderRadius: 8,
-            padding: "10px 12px",
-          }}
-        >
-          <Text style={{ fontSize: 13, display: "block", marginBottom: 8 }}>
-            {storedBlob
-              ? `This blob has the ${assetLabel} settings but no image. Upload the ${assetLabel} you downloaded to show it on the board:`
-              : `Upload the ${assetLabel} image you downloaded:`}
-          </Text>
-          <ImageDrop
-            current={image}
-            accept={uploadAccept}
-            onPick={(dataUrl) => onChange({ ...data, [imageKey]: dataUrl })}
-            onClear={() => onChange({ ...data, [imageKey]: null })}
-            label={`Upload ${assetLabel} image`}
-          />
-        </div>
+      {/* A current blob with no image is only an OLD blob (pre-baked-image era).
+          The blob is still fully stored and re-copyable; there's just nothing to
+          preview. Tell the user plainly rather than offer a dead upload path. */}
+      {storedBlob && !image && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          This older {assetLabel} blob carries no picture — re-export it from{" "}
+          {assetLabel === "QR" ? "QR Creator" : "Digital Card"} to show it on the board.
+        </Text>
       )}
       {image && (
         <img
@@ -649,8 +622,15 @@ function SocialAssets({
   data: BrandBoardData;
   onChange: (next: BrandBoardData) => void;
 }) {
-  const [blob, setBlob] = useState(data.sourceBlobs.social ?? "");
   const storedBlob = data.sourceBlobs.social;
+  const [blob, setBlob] = useState(storedBlob ?? "");
+  // Re-seed the textarea when Open swaps in a different stored blob, so a
+  // reopened kit visibly shows the social blob (not just a working Copy button).
+  const lastSeeded = useRef(storedBlob);
+  if (storedBlob !== lastSeeded.current) {
+    lastSeeded.current = storedBlob;
+    setBlob(storedBlob ?? "");
+  }
 
   const doImport = () => {
     const { assets, ok } = ingestSocialPayload(blob);
