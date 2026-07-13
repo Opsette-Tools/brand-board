@@ -5,7 +5,8 @@
 
 import type { BrandBoardData, BrandColor, ColorRamp, BrandRoles, SocialAsset } from "./board.types";
 import { MAX_COLORS } from "./board.types";
-import { FONT_PAIRINGS } from "@/lib/fonts";
+import { FONT_PAIRINGS, findPairing } from "@/lib/fonts";
+import { resolvePairingFromBlob } from "@/lib/shared-fonts";
 import { uuid } from "@/lib/uuid";
 
 function safeParse(input: string): unknown {
@@ -180,13 +181,30 @@ export function ingestPalettePayload(
     }
   }
 
-  // Fonts: map to a known pairing if possible, else take the raw families.
+  // Fonts: take the raw families for rendering AND capture the shared-library
+  // pairing id (the cross-tool interop key) so this font resolves identically in
+  // every tool. Prefer the explicit `font.id`; fall back to matching families.
   let headingFont = current.headingFont;
   let bodyFont = current.bodyFont;
+  let fontPairingId = current.fontPairingId;
   const font = isRecord(data.font) ? data.font : undefined;
   if (font) {
     if (typeof font.heading === "string" && font.heading) headingFont = font.heading;
     if (typeof font.body === "string" && font.body) bodyFont = font.body;
+    const resolved = resolvePairingFromBlob({
+      id: typeof font.id === "string" ? font.id : undefined,
+      heading: typeof font.heading === "string" ? font.heading : undefined,
+      body: typeof font.body === "string" ? font.body : undefined,
+    });
+    // Only adopt the resolved id when it actually corresponds to the incoming
+    // fonts (id given, or families matched) — never silently stamp the fallback
+    // first-pairing id onto a font it doesn't describe.
+    if (
+      (typeof font.id === "string" && findPairing(font.id)) ||
+      (resolved.heading.family === headingFont && resolved.body.family === bodyFont)
+    ) {
+      fontPairingId = resolved.id;
+    }
   }
 
   // The six semantic roles → drive the in-context mini mock composition.
@@ -223,6 +241,7 @@ export function ingestPalettePayload(
     roles,
     headingFont,
     bodyFont,
+    fontPairingId,
     kitName,
     paletteImageDataUrl,
     palettePdfDataUrl,

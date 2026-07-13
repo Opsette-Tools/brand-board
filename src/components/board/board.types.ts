@@ -89,6 +89,14 @@ export interface BrandBoardData {
   // ---- Type (from Palette Studio payload, or picked here) ----
   headingFont: string;
   bodyFont: string;
+  /**
+   * The shared font-library pairing id (see src/lib/shared-fonts.ts). This is the
+   * cross-tool interop key: a font chosen in Palette Studio travels here as its
+   * pairing id and resolves to the exact same fonts in every tool. Nullable
+   * because older boards + a hand-typed family combo may not map to a library
+   * pairing — the `headingFont`/`bodyFont` strings above remain the render source.
+   */
+  fontPairingId: string | null;
 
   // ---- Palette renders (from Palette Studio payload) ----
   // The rendered palette assets baked into the palette blob: a PNG "swatch sheet"
@@ -184,6 +192,7 @@ export function emptyBoard(): BrandBoardData {
     roles: null,
     headingFont: "Playfair Display",
     bodyFont: "Inter",
+    fontPairingId: null,
     paletteImageDataUrl: null,
     palettePdfDataUrl: null,
     logoDataUrl: null,

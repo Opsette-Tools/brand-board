@@ -278,13 +278,21 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
                     size="small"
                     style={{ width: "100%", marginTop: 4 }}
                     value={
+                      (data.fontPairingId &&
+                        FONT_PAIRINGS.find((p) => p.id === data.fontPairingId)?.id) ||
                       FONT_PAIRINGS.find(
                         (p) => p.headingFont === data.headingFont && p.bodyFont === data.bodyFont,
-                      )?.id ?? FONT_PAIRINGS[0].id
+                      )?.id ||
+                      FONT_PAIRINGS[0].id
                     }
                     onChange={(id) => {
                       const p = FONT_PAIRINGS.find((fp) => fp.id === id);
-                      if (p) patch({ headingFont: p.headingFont, bodyFont: p.bodyFont });
+                      if (p)
+                        patch({
+                          headingFont: p.headingFont,
+                          bodyFont: p.bodyFont,
+                          fontPairingId: p.id,
+                        });
                     }}
                     options={FONT_PAIRINGS.map((p) => ({
                       value: p.id,
