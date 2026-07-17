@@ -10,7 +10,7 @@ import {
   Upload,
   message,
 } from "antd";
-import { CopyOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { CopyOutlined, DeleteOutlined, EditOutlined, UploadOutlined } from "@ant-design/icons";
 import type { BrandBoardData, SocialAsset, PageId } from "./board.types";
 import { MAX_COLORS, PAGE_META } from "./board.types";
 import { layoutsForPage, type LayoutId } from "./layouts";
@@ -23,14 +23,47 @@ import {
   ingestSocialPayload,
 } from "./ingest";
 import { uuid } from "@/lib/uuid";
+import type { EmbedToolKey } from "./embedTools";
 
 const { Text } = Typography;
+
+// A small reusable "Edit in <Tool> — no tab" call-to-action shown atop each asset
+// section when the in-place drawer is available (Mechanism 3). The manual paste
+// box stays below it as the fallback.
+function EditInToolButton({
+  onClick,
+  hasBlob,
+  verbNew,
+  verbEdit,
+}: {
+  onClick: () => void;
+  hasBlob: boolean;
+  verbNew: string;
+  verbEdit: string;
+}) {
+  return (
+    <>
+      <Button type="primary" icon={<EditOutlined />} onClick={onClick} block>
+        {hasBlob ? verbEdit : verbNew}
+      </Button>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Opens right here — no new tab. Save inside and it flows back onto the board.
+      </Text>
+      <Text type="secondary" style={{ fontSize: 11, opacity: 0.8 }}>
+        Or paste an export blob manually:
+      </Text>
+    </>
+  );
+}
 
 interface BoardFormProps {
   data: BrandBoardData;
   onChange: (next: BrandBoardData) => void;
   /** The page currently on screen — the layout picker edits THIS page's layout. */
   activePage: PageId;
+  /** Open a tool's in-place editor (Mechanism 3 drawer). When set, each asset
+   *  section offers "Edit in <Tool>" — no tab, no copy/paste. */
+  onEditTool?: (key: EmbedToolKey) => void;
 }
 
 // Read an uploaded image file to a data URL + intrinsic size.
@@ -49,7 +82,7 @@ function readImage(
   reader.readAsDataURL(file);
 }
 
-export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
+export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormProps) {
   const patch = (p: Partial<BrandBoardData>) => onChange({ ...data, ...p });
 
   // The layout picker acts on the ACTIVE page only. Each page carries its own
@@ -230,9 +263,17 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
         items={[
           {
             key: "palette",
-            label: "Colors & fonts — paste from Palette Studio",
+            label: "Colors & fonts — from Palette Studio",
             children: (
               <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("palette")}
+                    hasBlob={!!data.sourceBlobs.palette}
+                    verbNew="Build a palette in Palette Studio"
+                    verbEdit="Edit palette in Palette Studio"
+                  />
+                )}
                 <Input.TextArea
                   rows={3}
                   placeholder='Paste the "Export to Brand Board" blob from Palette Studio'
@@ -305,9 +346,17 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
           },
           {
             key: "signature",
-            label: "Email signature — paste from Signature Studio",
+            label: "Email signature — from Signature Studio",
             children: (
               <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("signature")}
+                    hasBlob={!!data.sourceBlobs.signature}
+                    verbNew="Build a signature in Signature Studio"
+                    verbEdit="Edit signature in Signature Studio"
+                  />
+                )}
                 <Input.TextArea
                   rows={3}
                   placeholder='Paste the "Export to Brand Board" blob from Signature Studio'
@@ -353,37 +402,69 @@ export function BoardForm({ data, onChange, activePage }: BoardFormProps) {
           },
           {
             key: "qr",
-            label: "QR code — paste from QR Creator",
+            label: "QR code — from QR Creator",
             children: (
-              <BlobAsset
-                data={data}
-                onChange={onChange}
-                assetKey="qr"
-                imageKey="qrDataUrl"
-                ingest={ingestQrPayload}
-                assetLabel="QR"
-              />
+              <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("qr")}
+                    hasBlob={!!data.sourceBlobs.qr}
+                    verbNew="Build a QR in QR Creator"
+                    verbEdit="Edit QR in QR Creator"
+                  />
+                )}
+                <BlobAsset
+                  data={data}
+                  onChange={onChange}
+                  assetKey="qr"
+                  imageKey="qrDataUrl"
+                  ingest={ingestQrPayload}
+                  assetLabel="QR"
+                />
+              </Space>
             ),
           },
           {
             key: "card",
-            label: "Digital card — paste from Digital Card",
+            label: "Digital card — from Digital Card",
             children: (
-              <BlobAsset
-                data={data}
-                onChange={onChange}
-                assetKey="card"
-                imageKey="cardDataUrl"
-                vcardKey="cardVcardDataUrl"
-                ingest={ingestCardPayload}
-                assetLabel="card"
-              />
+              <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("card")}
+                    hasBlob={!!data.sourceBlobs.card}
+                    verbNew="Build a card in Digital Card"
+                    verbEdit="Edit card in Digital Card"
+                  />
+                )}
+                <BlobAsset
+                  data={data}
+                  onChange={onChange}
+                  assetKey="card"
+                  imageKey="cardDataUrl"
+                  vcardKey="cardVcardDataUrl"
+                  ingest={ingestCardPayload}
+                  assetLabel="card"
+                />
+              </Space>
             ),
           },
           {
             key: "social",
-            label: "Social & brand assets — paste from Icon Kit",
-            children: <SocialAssets data={data} onChange={onChange} />,
+            label: "Social & brand assets — from Icon Kit",
+            children: (
+              <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("social")}
+                    hasBlob={!!data.sourceBlobs.social}
+                    verbNew="Build assets in Icon Kit"
+                    verbEdit="Edit assets in Icon Kit"
+                  />
+                )}
+                <SocialAssets data={data} onChange={onChange} />
+              </Space>
+            ),
           },
         ]}
       />

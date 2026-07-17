@@ -16,8 +16,10 @@ import {
 import { ThemeProvider } from "@/lib/theme";
 import Shell from "@/components/Shell";
 import NewClientKitModal from "@/components/NewClientKitModal";
+import ToolEmbedDrawer from "@/components/ToolEmbedDrawer";
 import { BrandPage, GuidePage } from "@/components/board/BrandBoard";
 import { BoardForm } from "@/components/board/BoardForm";
+import { EMBED_TOOLS, type EmbedToolKey } from "@/components/board/embedTools";
 import {
   emptyBoard,
   boardHasContent,
@@ -71,6 +73,10 @@ function BrandBoardInner() {
   const [data, setData] = useState<BrandBoardData>(emptyBoard);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [newKitOpen, setNewKitOpen] = useState(false);
+  // Mechanism 3: the maskless drawer that edits a tool in-place inside an iframe.
+  // One drawer, one open-tool at a time; opened from each asset section, ingests
+  // the revised blob on save via that tool's existing ingest path.
+  const [drawerTool, setDrawerTool] = useState<EmbedToolKey | null>(null);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
 
@@ -271,6 +277,29 @@ function BrandBoardInner() {
       }
     };
     reader.readAsText(file);
+  };
+
+  // A revised asset came back from an in-place editor (Mechanism 3). Confirm
+  // apply it directly via that tool's existing ingest path (same fields replaced,
+  // everything else untouched, raw blob archived so it re-copies/re-opens like
+  // any imported asset), then close the drawer.
+  //
+  // No confirm dialog here on purpose: the user OPENED the editor and clicked a
+  // button literally named "Save to Brand Board" — that IS the confirmation. A
+  // second "are you sure?" is asking them to confirm what they just confirmed
+  // (and it fought the tool's own "Sent back" toast). The fork-#3 confirm was for
+  // the clipboard path, where a blob can arrive unexpectedly; the drawer is
+  // deliberate, so we trust the click and let the toast be the one acknowledgment.
+  const applyRevised = (toolKey: EmbedToolKey, revisedBlob: string) => {
+    const tool = EMBED_TOOLS[toolKey];
+    const next = tool.apply(revisedBlob, data);
+    if (next) {
+      setData(next);
+      message.success(`Updated from ${tool.title}`);
+    } else {
+      message.error("That didn't come through — try saving it again.");
+    }
+    setDrawerTool(null);
   };
 
   // Reset the whole board to a blank canvas. Destructive — the autosave draft is
@@ -506,6 +535,22 @@ function BrandBoardInner() {
         onClose={() => setNewKitOpen(false)}
         board={data}
       />
+      {drawerTool && (
+        <ToolEmbedDrawer
+          // Key on the tool so switching from one tool's drawer to another fully
+          // remounts (fresh iframe, fresh listeners) instead of reconciling the
+          // same instance and leaving the previous tool loaded.
+          key={drawerTool}
+          open
+          onClose={() => setDrawerTool(null)}
+          slug={EMBED_TOOLS[drawerTool].slug}
+          localPort={EMBED_TOOLS[drawerTool].localPort}
+          title={EMBED_TOOLS[drawerTool].title}
+          defaultWidth={EMBED_TOOLS[drawerTool].defaultWidth}
+          initialBlob={EMBED_TOOLS[drawerTool].currentBlob(data)}
+          onSaved={(revised) => applyRevised(drawerTool, revised)}
+        />
+      )}
       <input
         ref={projectInputRef}
         type="file"
@@ -601,7 +646,12 @@ function BrandBoardInner() {
           }}
         >
           <Card styles={{ body: { padding: 20 } }}>
-            <BoardForm data={data} onChange={setData} activePage={activePage} />
+            <BoardForm
+              data={data}
+              onChange={setData}
+              activePage={activePage}
+              onEditTool={(key) => setDrawerTool(key)}
+            />
           </Card>
 
           {/* minWidth:0 lets this 1fr grid track shrink below the page's
