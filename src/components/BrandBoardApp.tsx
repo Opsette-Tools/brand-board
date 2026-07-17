@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App as AntApp, Button, Card, Grid, Input, Modal, Segmented, Space, Steps, Typography, message } from "antd";
+import { App as AntApp, Button, Card, Dropdown, Grid, Input, Modal, Segmented, Space, Steps, Typography, message } from "antd";
 import {
   FilePdfOutlined,
   FileImageOutlined,
@@ -7,9 +7,15 @@ import {
   FolderOpenOutlined,
   LoadingOutlined,
   CheckCircleFilled,
+  RocketOutlined,
+  DownloadOutlined,
+  ClearOutlined,
+  DownOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import { ThemeProvider } from "@/lib/theme";
 import Shell from "@/components/Shell";
+import NewClientKitModal from "@/components/NewClientKitModal";
 import { BrandPage, GuidePage } from "@/components/board/BrandBoard";
 import { BoardForm } from "@/components/board/BoardForm";
 import {
@@ -64,6 +70,7 @@ function triggerDownload(blob: Blob, fileName: string) {
 function BrandBoardInner() {
   const [data, setData] = useState<BrandBoardData>(emptyBoard);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const [newKitOpen, setNewKitOpen] = useState(false);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
 
@@ -266,6 +273,26 @@ function BrandBoardInner() {
     reader.readAsText(file);
   };
 
+  // Reset the whole board to a blank canvas. Destructive — the autosave draft is
+  // the only copy of unsaved work — so it confirms first. Clearing to
+  // emptyBoard() lets the persist effect overwrite the IndexedDB draft, so a
+  // refresh stays empty (this is the "I'm stuck with the last kit and can't
+  // start clean" fix). Reset does NOT touch any saved .opsette-kit.json file.
+  const resetBoard = () => {
+    Modal.confirm({
+      title: "Start over with a blank board?",
+      content:
+        "This clears everything on the board — colors, type, logo, and every pasted asset. Any saved project file is untouched, but unsaved work here is gone.",
+      okText: "Clear board",
+      okButtonProps: { danger: true },
+      cancelText: "Keep it",
+      onOk: () => {
+        setData(emptyBoard());
+        message.success("Board cleared — you're starting fresh.");
+      },
+    });
+  };
+
   // Collect the live page nodes in canonical order, dropping any not yet mounted.
   const collectNodes = (): HTMLDivElement[] =>
     pages.map((p) => pageRefs.current[p]).filter((n): n is HTMLDivElement => n !== null);
@@ -351,48 +378,88 @@ function BrandBoardInner() {
   }, []);
   const scale = previewWidth / BOARD_W;
 
-  const projectButtons = (
-    <>
-      <Button
-        icon={<FolderOpenOutlined />}
-        onClick={() => projectInputRef.current?.click()}
-        title="Open a saved client project"
-      >
-        Open
+  // Header actions, consolidated into two dropdowns so the row stays calm:
+  //   • Kit    → New kit · Open · Save · (Reset)
+  //   • Download → PNG(s) · PDF
+  // Everything that was a loose button now lives under an intent-named menu.
+  const kitMenu = (
+    <Dropdown
+      trigger={["click"]}
+      menu={{
+        items: [
+          {
+            key: "new",
+            icon: <RocketOutlined />,
+            label: "New client kit",
+            onClick: () => setNewKitOpen(true),
+          },
+          {
+            key: "open",
+            icon: <FolderOpenOutlined />,
+            label: "Open project…",
+            onClick: () => projectInputRef.current?.click(),
+          },
+          {
+            key: "save",
+            icon: <SaveOutlined />,
+            label: "Save project",
+            disabled: !hasContent,
+            onClick: saveProject,
+          },
+          { type: "divider" },
+          {
+            key: "reset",
+            icon: <ClearOutlined />,
+            label: "Clear board",
+            danger: true,
+            disabled: !hasContent,
+            onClick: resetBoard,
+          },
+        ],
+      }}
+    >
+      <Button icon={<AppstoreOutlined />}>
+        Kit <DownOutlined style={{ fontSize: 10 }} />
       </Button>
+    </Dropdown>
+  );
+
+  const downloadMenu = (
+    <Dropdown
+      trigger={["click"]}
+      disabled={!hasContent || exporting !== null}
+      menu={{
+        items: [
+          {
+            key: "png",
+            icon: <FileImageOutlined />,
+            label: pages.length > 1 ? `PNGs — one per page (${pages.length})` : "PNG",
+            onClick: () => doExport("png"),
+          },
+          {
+            key: "pdf",
+            icon: <FilePdfOutlined />,
+            label: pages.length > 1 ? "PDF — whole kit" : "PDF",
+            onClick: () => doExport("pdf"),
+          },
+        ],
+      }}
+    >
       <Button
-        icon={<SaveOutlined />}
-        onClick={saveProject}
-        disabled={!hasContent}
-        title="Save this client's whole kit as a file you can reopen later"
+        type="primary"
+        icon={<DownloadOutlined />}
+        loading={exporting !== null}
+        disabled={!hasContent || exporting !== null}
       >
-        Save
+        Download <DownOutlined style={{ fontSize: 10 }} />
       </Button>
-    </>
+    </Dropdown>
   );
 
   const exportButtons = (
     <Space>
-      {projectButtons}
-      <Button
-        icon={<FileImageOutlined />}
-        onClick={() => doExport("png")}
-        loading={exporting === "png"}
-        disabled={!hasContent || exporting !== null}
-        title={pages.length > 1 ? "Download one PNG per page" : "Download the page as a PNG"}
-      >
-        {pages.length > 1 ? `PNGs (${pages.length})` : "PNG"}
-      </Button>
-      <Button
-        type="primary"
-        icon={<FilePdfOutlined />}
-        onClick={() => doExport("pdf")}
-        loading={exporting === "pdf"}
-        disabled={!hasContent || exporting !== null}
-        title="Download the whole kit as one PDF"
-      >
-        PDF
-      </Button>
+      {kitMenu}
+      {downloadMenu}
     </Space>
   );
 
@@ -434,6 +501,11 @@ function BrandBoardInner() {
 
   return (
     <Shell headerActions={!isMobile ? exportButtons : undefined}>
+      <NewClientKitModal
+        open={newKitOpen}
+        onClose={() => setNewKitOpen(false)}
+        board={data}
+      />
       <input
         ref={projectInputRef}
         type="file"
