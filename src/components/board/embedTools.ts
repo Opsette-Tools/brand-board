@@ -15,7 +15,7 @@ import {
   ingestSocialPayload,
 } from "./ingest";
 
-export type EmbedToolKey = "palette" | "signature" | "qr" | "card" | "social";
+export type EmbedToolKey = "palette" | "signature" | "qr" | "card" | "social" | "banner";
 
 export interface EmbedToolDef {
   key: EmbedToolKey;
@@ -113,6 +113,29 @@ export const EMBED_TOOLS: Record<EmbedToolKey, EmbedToolDef> = {
         ...data,
         socialAssets: assets,
         sourceBlobs: { ...data.sourceBlobs, social: raw.trim() },
+      };
+    },
+  },
+  banner: {
+    key: "banner",
+    slug: "banner-designer",
+    localPort: 8126,
+    title: "Banner Designer",
+    // A wide banner builder, like Icon Kit's old social tab — same generous width.
+    defaultWidth: 900,
+    currentBlob: (d) => d.sourceBlobs.banner ?? null,
+    // Banner Designer emits the SAME type:"social" blob shape as Icon Kit, so it
+    // reuses the same ingest — but its output is stored in its OWN slot
+    // (bannerAssets / sourceBlobs.banner), NEVER socialAssets. This separation is
+    // the entire reason this entry exists: pasting a banner must not clobber Icon
+    // Kit's social assets, and vice versa.
+    apply: (raw, data) => {
+      const { assets, ok } = ingestSocialPayload(raw);
+      if (!ok) return null;
+      return {
+        ...data,
+        bannerAssets: assets,
+        sourceBlobs: { ...data.sourceBlobs, banner: raw.trim() },
       };
     },
   },

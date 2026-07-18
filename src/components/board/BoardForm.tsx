@@ -450,6 +450,30 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
             ),
           },
           {
+            key: "banner",
+            label: "Banners — from Banner Designer",
+            children: (
+              <Space direction="vertical" style={{ width: "100%" }} size={8}>
+                {onEditTool && (
+                  <EditInToolButton
+                    onClick={() => onEditTool("banner")}
+                    hasBlob={!!data.sourceBlobs.banner}
+                    verbNew="Build banners in Banner Designer"
+                    verbEdit="Edit banners in Banner Designer"
+                  />
+                )}
+                <SocialAssets
+                  data={data}
+                  onChange={onChange}
+                  assetsKey="bannerAssets"
+                  blobKey="banner"
+                  sourceLabel="Banner Designer"
+                  uploadPlaceholder="LinkedIn banner"
+                />
+              </Space>
+            ),
+          },
+          {
             key: "social",
             label: "Social & brand assets — from Icon Kit",
             children: (
@@ -462,7 +486,14 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
                     verbEdit="Edit assets in Icon Kit"
                   />
                 )}
-                <SocialAssets data={data} onChange={onChange} />
+                <SocialAssets
+                  data={data}
+                  onChange={onChange}
+                  assetsKey="socialAssets"
+                  blobKey="social"
+                  sourceLabel="Icon Kit"
+                  uploadPlaceholder="profile avatar"
+                />
               </Space>
             ),
           },
@@ -700,21 +731,40 @@ function BlobAsset({
   );
 }
 
-// --- Social / brand assets (a LIST of images from Icon Kit) -------------------
-// Paste a "social" blob (a list of labeled images: banners, avatar, favicon…) OR
-// upload images manually. The whole blob is stored for archive/reopen; each
-// image renders on the board by its natural aspect ratio.
+// --- Social / brand assets (a LIST of images) --------------------------------
+// Paste a "social" blob (a list of labeled images) OR upload images manually.
+// The whole blob is stored for archive/reopen; each image renders on the board by
+// its natural aspect ratio.
+//
+// Generalized to serve BOTH slots — Icon Kit's `socialAssets` AND Banner
+// Designer's `bannerAssets` — since both emit the identical type:"social" blob
+// and behave identically here. The caller supplies which board field this
+// instance reads/writes (`assetsKey`) and which source blob it archives
+// (`blobKey`), so the two sections never touch each other's storage.
 function SocialAssets({
   data,
   onChange,
+  assetsKey,
+  blobKey,
+  sourceLabel,
+  uploadPlaceholder,
 }: {
   data: BrandBoardData;
   onChange: (next: BrandBoardData) => void;
+  /** Which board list this instance owns. */
+  assetsKey: "socialAssets" | "bannerAssets";
+  /** Which source blob this instance archives. */
+  blobKey: "social" | "banner";
+  /** Name of the source tool, for messages/placeholder (e.g. "Icon Kit"). */
+  sourceLabel: string;
+  /** Placeholder for the per-item label input (e.g. "LinkedIn banner"). */
+  uploadPlaceholder: string;
 }) {
-  const storedBlob = data.sourceBlobs.social;
+  const assets = data[assetsKey];
+  const storedBlob = data.sourceBlobs[blobKey];
   const [blob, setBlob] = useState(storedBlob ?? "");
   // Re-seed the textarea when Open swaps in a different stored blob, so a
-  // reopened kit visibly shows the social blob (not just a working Copy button).
+  // reopened kit visibly shows the blob (not just a working Copy button).
   const lastSeeded = useRef(storedBlob);
   if (storedBlob !== lastSeeded.current) {
     lastSeeded.current = storedBlob;
@@ -722,24 +772,24 @@ function SocialAssets({
   }
 
   const doImport = () => {
-    const { assets, ok } = ingestSocialPayload(blob);
+    const { assets: parsed, ok } = ingestSocialPayload(blob);
     if (!ok) {
-      message.error("That doesn't look like an Icon Kit export (no images found).");
+      message.error(`That doesn't look like a ${sourceLabel} export (no images found).`);
       return;
     }
     onChange({
       ...data,
-      socialAssets: assets,
-      sourceBlobs: { ...data.sourceBlobs, social: blob.trim() },
+      [assetsKey]: parsed,
+      sourceBlobs: { ...data.sourceBlobs, [blobKey]: blob.trim() },
     });
-    message.success(`Imported ${assets.length} asset${assets.length === 1 ? "" : "s"}`);
+    message.success(`Imported ${parsed.length} asset${parsed.length === 1 ? "" : "s"}`);
   };
 
   const copyBlob = async () => {
     if (!storedBlob) return;
     try {
       await navigator.clipboard.writeText(storedBlob);
-      message.success("Social blob copied");
+      message.success("Blob copied");
     } catch {
       message.error("Couldn't copy — select and copy manually.");
     }
@@ -769,7 +819,7 @@ function SocialAssets({
             const added = pendingRef.current;
             pendingRef.current = [];
             flushTimer.current = null;
-            onChange({ ...data, socialAssets: [...data.socialAssets, ...added] });
+            onChange({ ...data, [assetsKey]: [...data[assetsKey], ...added] });
           }, 60);
         };
         img.onload = () => push(img.naturalWidth, img.naturalHeight);
@@ -781,19 +831,19 @@ function SocialAssets({
   };
 
   const removeAsset = (id: string) =>
-    onChange({ ...data, socialAssets: data.socialAssets.filter((a) => a.id !== id) });
+    onChange({ ...data, [assetsKey]: data[assetsKey].filter((a) => a.id !== id) });
 
   const relabel = (id: string, label: string) =>
     onChange({
       ...data,
-      socialAssets: data.socialAssets.map((a) => (a.id === id ? { ...a, label } : a)),
+      [assetsKey]: data[assetsKey].map((a) => (a.id === id ? { ...a, label } : a)),
     });
 
   return (
     <Space direction="vertical" style={{ width: "100%" }} size={8}>
       <Input.TextArea
         rows={3}
-        placeholder='Paste the "Export to Brand Board" blob from Icon Kit'
+        placeholder={`Paste the "Export to Brand Board" blob from ${sourceLabel}`}
         value={blob}
         onChange={(e) => setBlob(e.target.value)}
         style={{ fontFamily: "monospace", fontSize: 12 }}
@@ -819,9 +869,9 @@ function SocialAssets({
           <Button icon={<UploadOutlined />}>Upload images</Button>
         </Upload>
       </Space>
-      {data.socialAssets.length > 0 && (
+      {assets.length > 0 && (
         <Space direction="vertical" size={6} style={{ width: "100%" }}>
-          {data.socialAssets.map((a) => (
+          {assets.map((a) => (
             <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <img
                 src={a.image}
@@ -831,7 +881,7 @@ function SocialAssets({
               <Input
                 size="small"
                 value={a.label}
-                placeholder="Label (e.g. LinkedIn banner)"
+                placeholder={`Label (e.g. ${uploadPlaceholder})`}
                 onChange={(e) => relabel(a.id, e.target.value)}
                 style={{ flex: 1 }}
               />

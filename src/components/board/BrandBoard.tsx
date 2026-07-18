@@ -1,5 +1,5 @@
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
-import type { BrandBoardData, PageId } from "./board.types";
+import type { BrandBoardData, PageId, SocialAsset } from "./board.types";
 import { blockPresence, pageBlocks, PAGE_META } from "./board.types";
 import { layoutClass, type LayoutId } from "./layouts";
 import {
@@ -140,7 +140,20 @@ export const BrandPage = forwardRef<HTMLDivElement, BrandPageProps>(
           )}
           {shows("card") && data.cardDataUrl && <CardBlock src={data.cardDataUrl} />}
           {shows("qr") && data.qrDataUrl && <QrBlock src={data.qrDataUrl} />}
-          {shows("social") && <SocialBlock data={data} />}
+          {shows("social") && (
+            <AssetGroupBlock
+              label="Social & Brand Assets"
+              assets={data.socialAssets}
+              className="bb-block-social"
+            />
+          )}
+          {shows("banner") && (
+            <AssetGroupBlock
+              label="Social Banners"
+              assets={data.bannerAssets}
+              className="bb-block-social bb-block-banner"
+            />
+          )}
         </div>
 
         {/* ================= FOOTER ================= */}
@@ -310,11 +323,22 @@ function QrBlock({ src }: { src: string }) {
   );
 }
 
-function SocialBlock({ data }: { data: BrandBoardData }) {
+// A titled grid of labeled images. Renders both groups on the Social page: Icon
+// Kit's brand assets (socialAssets) and Banner Designer's banners (bannerAssets),
+// each with its own heading. Same grid + wide-ratio handling for both.
+function AssetGroupBlock({
+  label,
+  assets,
+  className,
+}: {
+  label: string;
+  assets: SocialAsset[];
+  className: string;
+}) {
   return (
-    <Block label="Social & Brand Assets" className="bb-block-social">
+    <Block label={label} className={className}>
       <div className="bb-social-grid">
-        {data.socialAssets.map((a) => {
+        {assets.map((a) => {
           const ratio = a.width && a.height ? a.width / a.height : 1;
           const wide = ratio >= 1.8;
           return (
@@ -370,7 +394,7 @@ export const GuidePage = forwardRef<HTMLDivElement, GuidePageProps>(
         }));
 
     const appRows = APP_REF.filter((r) => r.present(data));
-    const hasSocial = data.socialAssets.length > 0;
+    const hasSocial = data.socialAssets.length > 0 || data.bannerAssets.length > 0;
 
     return (
       <div

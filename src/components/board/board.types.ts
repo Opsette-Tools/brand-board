@@ -135,6 +135,13 @@ export interface BrandBoardData {
   // renders each by its natural size; no per-type logic needed.
   socialAssets: SocialAsset[];
 
+  // ---- Banners (from Banner Designer) ----
+  // Its OWN slot, kept separate from socialAssets so Icon Kit and Banner Designer
+  // don't overwrite each other (they emit the same type:"social" blob shape).
+  // Same SocialAsset shape — a banner IS a labeled image. Renders as its own
+  // labeled group on the Social page, beneath Icon Kit's assets.
+  bannerAssets: SocialAsset[];
+
   // ---- Source blobs ----
   // The exact JSON blobs the user imported, kept so they can be re-copied back
   // out anytime and are archived in the project file / localStorage draft. This
@@ -146,6 +153,7 @@ export interface BrandBoardData {
     qr: string | null;
     card: string | null;
     social: string | null;
+    banner: string | null;
   };
 
   // ---- Per-page layout ----
@@ -203,7 +211,8 @@ export function emptyBoard(): BrandBoardData {
     cardDataUrl: null,
     cardVcardDataUrl: null,
     socialAssets: [],
-    sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null },
+    bannerAssets: [],
+    sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null, banner: null },
     pageLayouts: {
       // Overlap is the one layout that genuinely composes (it layers the palette)
       // — make it the Foundation default. The other pages stack until they earn
@@ -231,6 +240,7 @@ export interface BlockPresence {
   qr: boolean;
   card: boolean;
   social: boolean;
+  banner: boolean;
 }
 
 export function blockPresence(b: BrandBoardData): BlockPresence {
@@ -243,6 +253,7 @@ export function blockPresence(b: BrandBoardData): BlockPresence {
     qr: b.qrDataUrl !== null,
     card: b.cardDataUrl !== null,
     social: b.socialAssets.length > 0,
+    banner: b.bannerAssets.length > 0,
   };
 }
 
@@ -255,7 +266,9 @@ export function presentPages(b: BrandBoardData): PageId[] {
   const p = blockPresence(b);
   const pages: PageId[] = ["foundation"]; // always — palette/type/hero live here
   if (p.signature || p.qr || p.card) pages.push("applications");
-  if (p.social) pages.push("social");
+  // The Social page carries BOTH Icon Kit assets and Banner Designer banners —
+  // show it when either group has content.
+  if (p.social || p.banner) pages.push("social");
   // The guide is the "how to use this" poster. It's only meaningful once there's
   // a real palette to key and applications/assets to point at — a bare name+logo
   // has nothing to guide. Show it when the kit has a palette (its star block is
@@ -272,7 +285,7 @@ export function pageBlocks(page: PageId): (keyof BlockPresence)[] {
     case "applications":
       return ["signature", "qr", "card"];
     case "social":
-      return ["social"];
+      return ["social", "banner"];
     case "guide":
       // The guide renders its own fixed prose body, not composed blocks.
       return [];
@@ -287,6 +300,7 @@ export function boardHasContent(b: BrandBoardData): boolean {
     b.signatureHtml !== null ||
     b.qrDataUrl !== null ||
     b.cardDataUrl !== null ||
-    b.socialAssets.length > 0
+    b.socialAssets.length > 0 ||
+    b.bannerAssets.length > 0
   );
 }
