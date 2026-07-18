@@ -97,7 +97,12 @@
   font-weight: 700;
   line-height: 0.94;
   letter-spacing: -0.015em;
-  text-wrap: balance;
+  /* pretty (not balance): only ever wraps between WORDS and avoids orphans.
+     balance was splitting the wordmark into narrow balanced lines and breaking
+     it oddly. Words must never break mid-letter. */
+  text-wrap: pretty;
+  overflow-wrap: normal;
+  word-break: keep-all;
   margin: 0;
 }
 .bb-hero-tagline {
@@ -511,11 +516,15 @@
    LAYOUT 1 — EDITORIAL: full-bleed color header, clean stacked sections.
    ========================================================================= */
 .bb-layout-editorial .bb-hero {
-  height: 600px;
-  padding: 80px 96px;
+  /* Everything TOP-aligned (eyebrow stays where it always was). The tall empty
+     band came from the hero being 600px — just shortening it removes the gap
+     without re-anchoring the content. Trimmed further so In-Use clears the footer. */
+  height: 380px;
+  padding: 56px 96px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 32px;
 }
 .bb-layout-editorial .bb-hero::after {
   right: -260px;
@@ -527,10 +536,10 @@
   font-size: 128px;
 }
 .bb-layout-editorial .bb-body {
-  padding: 72px 96px 0;
+  padding: 52px 96px 0;
   display: flex;
   flex-direction: column;
-  gap: 66px;
+  gap: 50px;
 }
 /* Signature + QR share a row in editorial. */
 .bb-layout-editorial .bb-block-signature {
@@ -625,7 +634,15 @@
   height: 520px;
 }
 .bb-layout-split .bb-hero-name {
-  font-size: 92px;
+  /* The band is 480px wide with 56px side padding (~368px usable). The wordmark
+     stacks one word per line here (Providence / Care / Plus). At 92px "Providence"
+     overflowed the band; 62px fits it whole. Words wrap on SPACES only; the
+     break-word fallback below only ever triggers for a pathologically long single
+     word that can't fit the band at all (it never chops a word that fits). */
+  font-size: 62px;
+  line-height: 1.02;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .bb-layout-split .bb-hero-top {
   flex-direction: column;
@@ -665,11 +682,14 @@
    sit beneath. Boldest, most "statement piece".
    ========================================================================= */
 .bb-layout-poster .bb-hero {
-  height: 680px;
-  padding: 96px;
+  /* Top-aligned (eyebrow stays at the top). Shorter hero + smaller wordmark
+     removes the gap; the 210px wordmark was the real space hog. */
+  height: 470px;
+  padding: 72px 96px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 28px;
   background: var(--bb-paper, #f6f3ec);
   color: var(--bb-ink, #1a1714);
 }
@@ -681,9 +701,11 @@
   opacity: 1;
 }
 .bb-layout-poster .bb-hero-name {
-  font-size: 210px;
+  /* Was 210px — far larger than everything below it. Dropped so the wordmark
+     still reads as the statement piece without dwarfing the palette/type. */
+  font-size: 150px;
   color: var(--bb-primary, #2f4f46);
-  line-height: 0.86;
+  line-height: 0.9;
 }
 .bb-layout-poster .bb-hero-tagline {
   color: var(--bb-muted, #8a8178);
@@ -738,11 +760,14 @@
    of their own read as a deliberate, consistent set rather than an afterthought.
    ========================================================================= */
 .bb-layout-stack .bb-hero {
-  height: 460px;
-  padding: 78px 96px;
+  /* Top-aligned (eyebrow stays at the top). Shorter hero removes the empty band
+     and gives In-Use room above the footer. */
+  height: 380px;
+  padding: 60px 96px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 32px;
 }
 .bb-layout-stack .bb-hero::after {
   right: -240px;
@@ -758,10 +783,10 @@
   margin-top: 16px;
 }
 .bb-layout-stack .bb-body {
-  padding: 66px 96px 0;
+  padding: 56px 96px 0;
   display: flex;
   flex-direction: column;
-  gap: 60px;
+  gap: 52px;
 }
 
 /* ---- Compact secondary-page header --------------------------------------
