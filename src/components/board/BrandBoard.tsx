@@ -117,7 +117,7 @@ export const BrandPage = forwardRef<HTMLDivElement, BrandPageProps>(
               {meta.index} — {meta.title}
             </span>
             {data.logoDataUrl && (
-              <div className="bb-logo-slot">
+              <div className={`bb-logo-slot bb-logo-chip-${data.logoChip}`}>
                 <img src={data.logoDataUrl} alt="" />
               </div>
             )}
@@ -409,7 +409,7 @@ export const GuidePage = forwardRef<HTMLDivElement, GuidePageProps>(
               {meta.index} — {meta.title}
             </span>
             {data.logoDataUrl && (
-              <div className="bb-logo-slot">
+              <div className={`bb-logo-slot bb-logo-chip-${data.logoChip}`}>
                 <img src={data.logoDataUrl} alt="" />
               </div>
             )}

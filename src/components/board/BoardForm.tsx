@@ -24,6 +24,7 @@ import {
   ingestSocialPayload,
 } from "./ingest";
 import { uuid } from "@/lib/uuid";
+import { analyzeLogoChip } from "./logoChip";
 import type { EmbedToolKey } from "./embedTools";
 
 const { Text } = Typography;
@@ -85,6 +86,15 @@ function readImage(
 
 export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormProps) {
   const patch = (p: Partial<BrandBoardData>) => onChange({ ...data, ...p });
+
+  // The logo-chip analysis is async and resolves AFTER other edits may have
+  // landed. Merging its result onto the render-time `data` would revert those.
+  // This ref always points at the latest data, so the async patch merges onto
+  // current state and only touches logoChip.
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const patchLatest = (p: Partial<BrandBoardData>) =>
+    onChange({ ...dataRef.current, ...p });
 
   // The layout picker acts on the ACTIVE page only. Each page carries its own
   // layout in data.pageLayouts, and offers only the layouts that suit it.
@@ -230,9 +240,16 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
             accept="image/png,image/jpeg,image/svg+xml,image/webp"
             showUploadList={false}
             beforeUpload={(file) => {
-              readImage(file, (logoDataUrl, logoWidth, logoHeight) =>
-                patch({ logoDataUrl, logoWidth, logoHeight }),
-              );
+              readImage(file, (logoDataUrl, logoWidth, logoHeight) => {
+                // Show the logo immediately; reset chip so a prior logo's
+                // decision doesn't linger while we re-sample.
+                patch({ logoDataUrl, logoWidth, logoHeight, logoChip: "none" });
+                // Sample the logo's pixels to decide its safe-chip backing, then
+                // patch it in when ready (async — merges onto latest state).
+                void analyzeLogoChip(logoDataUrl).then((logoChip) =>
+                  patchLatest({ logoChip }),
+                );
+              });
               return false;
             }}
           >
@@ -250,7 +267,9 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
               <Button
                 type="text"
                 icon={<DeleteOutlined />}
-                onClick={() => patch({ logoDataUrl: null, logoWidth: null, logoHeight: null })}
+                onClick={() =>
+                  patch({ logoDataUrl: null, logoWidth: null, logoHeight: null, logoChip: "none" })
+                }
               />
             </>
           )}

@@ -1,4 +1,5 @@
 import type { LayoutId } from "./layouts";
+import type { LogoChip } from "./logoChip";
 
 // The data model for a brand board. Brand Board is a CONSUMER: it holds the
 // assets a user pastes/uploads from the other Opsette tools (per
@@ -111,6 +112,13 @@ export interface BrandBoardData {
   logoDataUrl: string | null;
   logoWidth: number | null;
   logoHeight: number | null;
+  /**
+   * Safe-chip decision for the logo, derived from its pixels at ingest (see
+   * logoChip.ts). "none" = self-backed logo, render bare; "light"/"dark" = a
+   * transparent logo that needs a light/dark backing so its ink reads on the
+   * hero wash. Persisted so a reopened kit keeps the decision without re-sampling.
+   */
+  logoChip: LogoChip;
 
   // ---- Signature (from Signature Studio payload) ----
   /** Self-contained email HTML, rendered in a sandboxed iframe tile. */
@@ -206,6 +214,7 @@ export function emptyBoard(): BrandBoardData {
     logoDataUrl: null,
     logoWidth: null,
     logoHeight: null,
+    logoChip: "none",
     signatureHtml: null,
     qrDataUrl: null,
     cardDataUrl: null,
