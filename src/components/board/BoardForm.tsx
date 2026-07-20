@@ -4,7 +4,6 @@ import {
   Collapse,
   Input,
   Segmented,
-  Select,
   Space,
   Typography,
   Upload,
@@ -14,7 +13,9 @@ import { CopyOutlined, DeleteOutlined, EditOutlined, UploadOutlined } from "@ant
 import type { BrandBoardData, SocialAsset, PageId } from "./board.types";
 import { MAX_COLORS, PAGE_META } from "./board.types";
 import { layoutsForPage, type LayoutId } from "./layouts";
-import { FONT_PAIRINGS } from "@/lib/fonts";
+import { resolvePairingId } from "@/lib/fonts";
+import { getPairing } from "@/lib/shared-fonts";
+import { OpsetteFontPicker } from "@/components/opsette-font-picker";
 import {
   ingestPalettePayload,
   ingestSignaturePayload,
@@ -315,31 +316,24 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
                 )}
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Font pairing</Text>
-                  <Select
-                    size="small"
-                    style={{ width: "100%", marginTop: 4 }}
-                    value={
-                      (data.fontPairingId &&
-                        FONT_PAIRINGS.find((p) => p.id === data.fontPairingId)?.id) ||
-                      FONT_PAIRINGS.find(
-                        (p) => p.headingFont === data.headingFont && p.bodyFont === data.bodyFont,
-                      )?.id ||
-                      FONT_PAIRINGS[0].id
-                    }
-                    onChange={(id) => {
-                      const p = FONT_PAIRINGS.find((fp) => fp.id === id);
-                      if (p)
+                  <div style={{ marginTop: 4 }}>
+                    <OpsetteFontPicker
+                      size="small"
+                      value={resolvePairingId({
+                        fontPairingId: data.fontPairingId ?? undefined,
+                        headingFont: data.headingFont,
+                        bodyFont: data.bodyFont,
+                      })}
+                      onChange={(id) => {
+                        const p = getPairing(id);
                         patch({
-                          headingFont: p.headingFont,
-                          bodyFont: p.bodyFont,
+                          headingFont: p.heading.family,
+                          bodyFont: p.body.family,
                           fontPairingId: p.id,
                         });
-                    }}
-                    options={FONT_PAIRINGS.map((p) => ({
-                      value: p.id,
-                      label: `${p.vibe} — ${p.headingFont} + ${p.bodyFont}`,
-                    }))}
-                  />
+                      }}
+                    />
+                  </div>
                 </div>
               </Space>
             ),

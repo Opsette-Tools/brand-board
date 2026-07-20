@@ -20,23 +20,19 @@ import {
 
 export interface FontPairing {
   id: string;
-  /** Short human label shown in the picker, e.g. "Editorial". */
-  vibe: string;
   headingFont: string;
   bodyFont: string;
 }
 
-/** Title-case the pairing's leading vibe tag for the picker label. */
-function vibeLabel(p: LibFontPairing): string {
-  const tag = p.vibeTags[0] ?? "";
-  return tag ? tag.charAt(0).toUpperCase() + tag.slice(1) : "Pairing";
-}
-
-/** Adapt a shared-library pairing to Brand Board's flat picker shape. */
+/**
+ * Adapt a shared-library pairing to Brand Board's flat family shape. The picker
+ * UI now comes from the shared OpsetteFontPicker (grouped by vibe itself), so
+ * this shape only needs the id + the two family strings the renderer, project
+ * files, and interop payload carry.
+ */
 function toBoardPairing(p: LibFontPairing): FontPairing {
   return {
     id: p.id,
-    vibe: vibeLabel(p),
     headingFont: p.heading.family,
     bodyFont: p.body.family,
   };

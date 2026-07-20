@@ -1,4 +1,4 @@
-// AUTO-VENDORED from _shared/fonts/shared-fonts.ts — DO NOT EDIT HERE.
+// AUTO-VENDORED from _shared — DO NOT EDIT HERE.
 // Edit the master and run `node _shared/fonts/sync.mjs` to re-sync.
 
 /**
@@ -47,7 +47,7 @@ export type FontClassification =
   | "display"
   | "script";
 
-/** Vibe tags used by the vibe-picker UI and the suggestion algorithm. */
+/** Vibe used to GROUP pairs under a section header in the picker. One per pair. */
 export type VibeTag =
   | "professional"
   | "friendly"
@@ -84,8 +84,14 @@ export interface FontSpec {
 export interface FontPairing {
   /** Stable slug — the value stored in JSON blobs and used for selection. */
   id: string;
-  /** Vibe tags for filtering + the suggestion algorithm's overlap score. */
-  vibeTags: VibeTag[];
+  /**
+   * The ONE truest vibe for this pair — a section HEADER, not a filter. The
+   * picker groups pairs under their vibe for scanability; each pair appears
+   * exactly once, under its single vibe. (A vibe *filter* is deliberately out
+   * of scope; if it's ever added it gets promoted globally, not smuggled in
+   * through the picker.)
+   */
+  vibe: VibeTag;
   heading: FontSpec;
   body: FontSpec;
   /**
@@ -98,13 +104,13 @@ export interface FontPairing {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
- *  THE LIBRARY — 21 curated pairs spanning the required vibes:
+ *  THE LIBRARY — 32 curated pairs spanning the required vibes:
  *    minimal/clean · bold/confident · warm/friendly · luxe/premium ·
  *    editorial/trustworthy · technical/startup · creative/expressive
  *
- *  Every pair obeys the encoded pairing rules:
+ *  Each pair carries ONE truest `vibe` — the section it groups under in the
+ *  picker. Every pair obeys the encoded pairing rules:
  *   • body classification ≠ heading classification
- *   • vibe tags overlap or complement between heading and body intent
  *   • never two display, never two scripts, never two serifs w/o weight contrast
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -112,7 +118,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── MINIMAL / CLEAN ──────────────────────────────────────────────────────
   {
     id: "inter",
-    vibeTags: ["minimal", "clean", "professional", "technical"],
+    vibe: "minimal",
     superfamily: true,
     heading: {
       family: "Inter",
@@ -129,7 +135,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "space-inter",
-    vibeTags: ["minimal", "clean", "technical", "startup"],
+    vibe: "technical",
     superfamily: false,
     heading: {
       family: "Space Grotesk",
@@ -146,7 +152,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "manrope-manrope",
-    vibeTags: ["minimal", "clean", "professional", "startup"],
+    vibe: "minimal",
     superfamily: true,
     heading: {
       family: "Manrope",
@@ -163,7 +169,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "outfit-inter",
-    vibeTags: ["minimal", "clean", "startup", "friendly"],
+    vibe: "startup",
     superfamily: false,
     heading: {
       family: "Outfit",
@@ -182,7 +188,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── BOLD / CONFIDENT ─────────────────────────────────────────────────────
   {
     id: "archivo-inter",
-    vibeTags: ["bold", "confident", "professional", "startup"],
+    vibe: "bold",
     superfamily: false,
     heading: {
       family: "Archivo",
@@ -199,7 +205,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "anton-roboto",
-    vibeTags: ["bold", "confident", "expressive"],
+    vibe: "bold",
     superfamily: false,
     heading: {
       family: "Anton",
@@ -216,7 +222,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "syne-inter",
-    vibeTags: ["bold", "creative", "expressive", "confident"],
+    vibe: "creative",
     superfamily: false,
     heading: {
       family: "Syne",
@@ -233,7 +239,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "sora-inter",
-    vibeTags: ["bold", "technical", "startup", "confident"],
+    vibe: "technical",
     superfamily: false,
     heading: {
       family: "Sora",
@@ -252,7 +258,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── WARM / FRIENDLY ──────────────────────────────────────────────────────
   {
     id: "poppins-inter",
-    vibeTags: ["friendly", "warm", "startup", "clean"],
+    vibe: "friendly",
     superfamily: false,
     heading: {
       family: "Poppins",
@@ -269,7 +275,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "quicksand-nunito",
-    vibeTags: ["friendly", "warm", "creative"],
+    vibe: "friendly",
     superfamily: false,
     heading: {
       family: "Quicksand",
@@ -286,7 +292,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "dmsans-dmsans",
-    vibeTags: ["friendly", "warm", "clean", "professional"],
+    vibe: "friendly",
     superfamily: true,
     heading: {
       family: "DM Sans",
@@ -303,7 +309,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "fraunces-nunito",
-    vibeTags: ["warm", "friendly", "creative", "editorial"],
+    vibe: "warm",
     superfamily: false,
     heading: {
       family: "Fraunces",
@@ -322,7 +328,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── LUXE / PREMIUM ───────────────────────────────────────────────────────
   {
     id: "cormorant-lato",
-    vibeTags: ["luxury", "premium", "editorial", "trustworthy"],
+    vibe: "luxury",
     superfamily: false,
     heading: {
       family: "Cormorant Garamond",
@@ -339,7 +345,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "playfair-montserrat",
-    vibeTags: ["luxury", "premium", "editorial", "confident"],
+    vibe: "luxury",
     superfamily: false,
     heading: {
       family: "Playfair Display",
@@ -356,7 +362,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "playfair-source",
-    vibeTags: ["editorial", "trustworthy", "luxury", "premium"],
+    vibe: "editorial",
     superfamily: false,
     heading: {
       family: "Playfair Display",
@@ -373,7 +379,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "bodoni-lato",
-    vibeTags: ["luxury", "premium", "editorial", "expressive"],
+    vibe: "luxury",
     superfamily: false,
     heading: {
       family: "Bodoni Moda",
@@ -390,7 +396,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "marcellus-josefin",
-    vibeTags: ["luxury", "premium", "minimal", "creative"],
+    vibe: "luxury",
     superfamily: false,
     heading: {
       family: "Marcellus",
@@ -409,7 +415,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── EDITORIAL / TRUSTWORTHY ──────────────────────────────────────────────
   {
     id: "merriweather-lato",
-    vibeTags: ["editorial", "trustworthy", "warm", "professional"],
+    vibe: "editorial",
     superfamily: false,
     heading: {
       family: "Merriweather",
@@ -426,7 +432,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "lora-inter",
-    vibeTags: ["editorial", "trustworthy", "warm", "professional"],
+    vibe: "editorial",
     superfamily: false,
     heading: {
       family: "Lora",
@@ -443,7 +449,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "plex-serif-sans",
-    vibeTags: ["editorial", "trustworthy", "technical", "professional"],
+    vibe: "professional",
     superfamily: true,
     heading: {
       family: "IBM Plex Serif",
@@ -460,7 +466,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "source-serif-sans",
-    vibeTags: ["editorial", "trustworthy", "clean", "professional"],
+    vibe: "editorial",
     superfamily: true,
     heading: {
       family: "Source Serif 4",
@@ -476,10 +482,29 @@ export const FONT_PAIRINGS: FontPairing[] = [
     },
   },
 
+  {
+    id: "newsreader-inter",
+    vibe: "editorial",
+    superfamily: false,
+    heading: {
+      family: "Newsreader",
+      classification: "modern-serif",
+      weights: [500, 600],
+      // Optical-size variable font (like Fraunces) — carry the opsz axis.
+      googleParam: "Newsreader:opsz,wght@6..72,500;6..72,600",
+    },
+    body: {
+      family: "Inter",
+      classification: "humanist-sans",
+      weights: [400, 500],
+      googleParam: "Inter:wght@400;500",
+    },
+  },
+
   // ── TECHNICAL / STARTUP ──────────────────────────────────────────────────
   {
     id: "spacemono-worksans",
-    vibeTags: ["technical", "startup", "creative", "minimal"],
+    vibe: "technical",
     superfamily: false,
     heading: {
       family: "Space Mono",
@@ -498,7 +523,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── CREATIVE / EXPRESSIVE ────────────────────────────────────────────────
   {
     id: "bricolage-worksans",
-    vibeTags: ["creative", "expressive", "bold", "startup"],
+    vibe: "creative",
     superfamily: false,
     heading: {
       family: "Bricolage Grotesque",
@@ -515,7 +540,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "archivoblack-archivo",
-    vibeTags: ["bold", "confident", "expressive"],
+    vibe: "bold",
     superfamily: true,
     heading: {
       family: "Archivo Black",
@@ -534,7 +559,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   // ── ADDITIONAL EDITORIAL / LUXE HEADINGS (superset — nothing dropped) ─────
   {
     id: "dmserif-dmsans",
-    vibeTags: ["luxury", "premium", "editorial", "confident"],
+    vibe: "editorial",
     superfamily: true,
     heading: {
       family: "DM Serif Display",
@@ -551,7 +576,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "libre-baskerville-montserrat",
-    vibeTags: ["editorial", "trustworthy", "professional", "warm"],
+    vibe: "trustworthy",
     superfamily: false,
     heading: {
       family: "Libre Baskerville",
@@ -568,7 +593,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "ebgaramond-montserrat",
-    vibeTags: ["luxury", "premium", "editorial", "trustworthy"],
+    vibe: "luxury",
     superfamily: false,
     heading: {
       family: "EB Garamond",
@@ -585,7 +610,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "spectral-karla",
-    vibeTags: ["editorial", "trustworthy", "warm", "creative"],
+    vibe: "editorial",
     superfamily: false,
     heading: {
       family: "Spectral",
@@ -602,7 +627,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "libre-baskerville-karla",
-    vibeTags: ["warm", "friendly", "editorial", "trustworthy"],
+    vibe: "warm",
     superfamily: false,
     heading: {
       family: "Libre Baskerville",
@@ -619,7 +644,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "montserrat-opensans",
-    vibeTags: ["professional", "clean", "trustworthy", "confident"],
+    vibe: "professional",
     superfamily: false,
     heading: {
       family: "Montserrat",
@@ -636,7 +661,7 @@ export const FONT_PAIRINGS: FontPairing[] = [
   },
   {
     id: "worksans-worksans",
-    vibeTags: ["minimal", "clean", "professional"],
+    vibe: "clean",
     superfamily: true,
     heading: {
       family: "Work Sans",
@@ -695,6 +720,20 @@ export function lightestWeight(spec: FontSpec): number {
 export function pairingLabel(p: FontPairing): string {
   if (p.heading.family === p.body.family) return p.heading.family;
   return `${p.heading.family} / ${p.body.family}`;
+}
+
+/**
+ * Picker label, "Heading + Body" (or just the family for a same-family pair).
+ * Used by OpsetteFontPicker under the vibe group heading.
+ */
+export function pairingPickerLabel(p: FontPairing): string {
+  if (p.heading.family === p.body.family) return p.heading.family;
+  return `${p.heading.family} + ${p.body.family}`;
+}
+
+/** Title-case a vibe for a section heading, e.g. "editorial" → "Editorial". */
+export function vibeHeading(tag: VibeTag): string {
+  return tag.charAt(0).toUpperCase() + tag.slice(1);
 }
 
 /**
@@ -805,24 +844,22 @@ export function defaultBodyFor(headingFamily: string): BodySuggestion | null {
   return top ?? null;
 }
 
-/** Every distinct vibe tag present in the library, in first-seen order. */
+/** Every distinct vibe present in the library, in first-seen order (= group order). */
 export function allVibeTags(): VibeTag[] {
   const seen = new Set<VibeTag>();
   const out: VibeTag[] = [];
   for (const p of FONT_PAIRINGS) {
-    for (const t of p.vibeTags) {
-      if (!seen.has(t)) {
-        seen.add(t);
-        out.push(t);
-      }
+    if (!seen.has(p.vibe)) {
+      seen.add(p.vibe);
+      out.push(p.vibe);
     }
   }
   return out;
 }
 
-/** Pairings that carry a given vibe tag — for the vibe-picker filter. */
+/** Pairings under a given vibe — the members of that section, in library order. */
 export function pairingsByVibe(tag: VibeTag): FontPairing[] {
-  return FONT_PAIRINGS.filter((p) => p.vibeTags.includes(tag));
+  return FONT_PAIRINGS.filter((p) => p.vibe === tag);
 }
 
 /**
@@ -861,7 +898,13 @@ function injectHref(href: string): void {
  *  Given a heading font family name, return the top-N suggested BODY fonts
  *  drawn from the library, ranked by:
  *    1. superfamily match first (heading has a known designed-together body),
- *    2. then classification contrast + vibe-overlap score.
+ *    2. then classification contrast (sans↔serif scores highest).
+ *
+ *  NOTE: vibe-overlap scoring was removed when the model went to ONE vibe per
+ *  pair (vibe is now a section header, not a tag set — nothing to overlap).
+ *  `contrastScore` is the sole ranking signal after the superfamily bump. This
+ *  "suggest a body" UX is not wired into any picker today; the current pickers
+ *  browse whole pairs. It's kept intact in case it's ever turned on.
  *
  *  Encoded pairing rules (hard constraints — a candidate that violates one is
  *  dropped entirely):
@@ -911,12 +954,6 @@ function isLegalPair(heading: FontSpec, body: FontSpec): boolean {
     return strongWeightContrast(heading, body);
   }
   return true;
-}
-
-/** Count shared vibe tags between two pairings (the overlap score input). */
-function vibeOverlap(a: VibeTag[], b: VibeTag[]): number {
-  const setB = new Set(b);
-  return a.filter((t) => setB.has(t)).length;
 }
 
 /**
@@ -973,15 +1010,9 @@ export function suggestBodyFonts(
     // (they were designed to sit together — e.g. Inter heading + Inter body).
     if (!isSuper && !isLegalPair(heading, body)) continue;
 
-    const contrast = contrastScore(heading.classification, body.classification);
-    const overlap = vibeOverlap(headingPairing.vibeTags, pairing.vibeTags);
-    // Normalize overlap against the heading's own tag count (0..1).
-    const overlapNorm = headingPairing.vibeTags.length
-      ? overlap / headingPairing.vibeTags.length
-      : 0;
-
-    // Weighted blend: contrast is the dominant signal, vibe overlap refines it.
-    const base = contrast * 0.65 + overlapNorm * 0.35;
+    // Classification contrast is the sole ranking signal (vibe overlap was
+    // removed with the one-vibe-per-pair model change).
+    const base = contrastScore(heading.classification, body.classification);
     // Superfamily gets a large priority bump so it always ranks first.
     const score = isSuper ? 1 + base : base;
 
