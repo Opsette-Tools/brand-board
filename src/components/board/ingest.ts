@@ -297,13 +297,17 @@ export function ingestQrPayload(input: string): { image: string | null; ok: bool
  * inside the saved kit → File Builder writes it as Digital_Card/{brand}_contact.vcf.
  * A blob without a valid `data.vcard` returns `vcard: null`, so the caller's
  * full-reset paste clears any prior vcard — same semantics as `image`.
+ *
+ * And the baked vCard QR (`data.qr`, a PNG data URL) — the tap-to-save half:
+ * scan → the phone offers to save the contact. Held the same way (downloadable,
+ * never rendered on the board) → File Builder writes Digital_Card/contact_qr.png.
  */
 export function ingestCardPayload(
   input: string,
-): { image: string | null; vcard: string | null; ok: boolean } {
+): { image: string | null; vcard: string | null; qr: string | null; ok: boolean } {
   const raw = safeParse(input);
-  if (!isRecord(raw)) return { image: null, vcard: null, ok: false };
-  if (raw.type && raw.type !== "card") return { image: null, vcard: null, ok: false };
+  if (!isRecord(raw)) return { image: null, vcard: null, qr: null, ok: false };
+  if (raw.type && raw.type !== "card") return { image: null, vcard: null, qr: null, ok: false };
   const data = isRecord(raw.data) ? raw.data : raw;
   const image =
     typeof data.image === "string" && data.image.startsWith("data:")
@@ -313,8 +317,12 @@ export function ingestCardPayload(
     typeof data.vcard === "string" && data.vcard.startsWith("data:")
       ? data.vcard
       : null;
+  const qr =
+    typeof data.qr === "string" && data.qr.startsWith("data:")
+      ? data.qr
+      : null;
   const ok = image !== null || isRecord(data.card) || isRecord(data.config);
-  return { image, vcard, ok };
+  return { image, vcard, qr, ok };
 }
 
 /**

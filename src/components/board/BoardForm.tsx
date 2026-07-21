@@ -456,6 +456,7 @@ export function BoardForm({ data, onChange, activePage, onEditTool }: BoardFormP
                   assetKey="card"
                   imageKey="cardDataUrl"
                   vcardKey="cardVcardDataUrl"
+                  qrKey="cardQrDataUrl"
                   ingest={ingestCardPayload}
                   assetLabel="card"
                 />
@@ -630,6 +631,7 @@ function BlobAsset({
   assetKey,
   imageKey,
   vcardKey,
+  qrKey,
   ingest,
   assetLabel,
 }: {
@@ -639,7 +641,9 @@ function BlobAsset({
   imageKey: "qrDataUrl" | "cardDataUrl";
   // Card-only: the field a baked vCard is stored into. QR passes no vcardKey.
   vcardKey?: "cardVcardDataUrl";
-  ingest: (input: string) => { image: string | null; vcard?: string | null; ok: boolean };
+  // Card-only: the field the baked vCard QR is stored into. QR passes no qrKey.
+  qrKey?: "cardQrDataUrl";
+  ingest: (input: string) => { image: string | null; vcard?: string | null; qr?: string | null; ok: boolean };
   assetLabel: string;
 }) {
   // Seed the paste field from the stored blob, and re-seed it whenever a reopen
@@ -657,7 +661,7 @@ function BlobAsset({
   const image = data[imageKey];
 
   const doImport = () => {
-    const { image: img, vcard, ok } = ingest(blob);
+    const { image: img, vcard, qr, ok } = ingest(blob);
     if (!ok) {
       message.error(`That doesn't look like a ${assetLabel} export.`);
       return;
@@ -669,6 +673,8 @@ function BlobAsset({
       // Card-only: the vcard fully resets on every paste — a blob without a vcard
       // clears any prior one to null (same full-reset semantics as the image).
       ...(vcardKey ? { [vcardKey]: vcard ?? null } : {}),
+      // Card-only: the vCard QR resets on every paste, same semantics.
+      ...(qrKey ? { [qrKey]: qr ?? null } : {}),
       sourceBlobs: { ...data.sourceBlobs, [assetKey]: blob.trim() },
     });
     message.success(
@@ -691,6 +697,7 @@ function BlobAsset({
       ...data,
       [imageKey]: null,
       ...(vcardKey ? { [vcardKey]: null } : {}),
+      ...(qrKey ? { [qrKey]: null } : {}),
       sourceBlobs: { ...data.sourceBlobs, [assetKey]: null },
     });
 

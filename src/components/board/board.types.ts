@@ -136,6 +136,12 @@ export interface BrandBoardData {
   // Digital_Card/{brand}_contact.vcf) but never rendered on the board. Null when
   // the card blob predates the vcard bake, or was pasted without one.
   cardVcardDataUrl: string | null;
+  // The vCard QR (data.qr) baked into the card blob — the tap-to-save half of
+  // the card: scan → the phone offers to save the contact. Like the vcard it's a
+  // downloadable asset, not a visual, so it's held here (→ File Builder writes
+  // Digital_Card/contact_qr.png) but never rendered on the board. Null when the
+  // card blob predates the QR bake (§2a), or was pasted without one.
+  cardQrDataUrl: string | null;
 
   // ---- Social / brand assets (from Icon Kit) ----
   // A generic, open-ended list of labeled images: social banners (any platform),
@@ -219,6 +225,7 @@ export function emptyBoard(): BrandBoardData {
     qrDataUrl: null,
     cardDataUrl: null,
     cardVcardDataUrl: null,
+    cardQrDataUrl: null,
     socialAssets: [],
     bannerAssets: [],
     sourceBlobs: { palette: null, signature: null, qr: null, card: null, social: null, banner: null },

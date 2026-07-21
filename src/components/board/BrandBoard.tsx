@@ -138,7 +138,9 @@ export const BrandPage = forwardRef<HTMLDivElement, BrandPageProps>(
           {shows("signature") && data.signatureHtml && (
             <SignatureBlock html={data.signatureHtml} />
           )}
-          {shows("card") && data.cardDataUrl && <CardBlock src={data.cardDataUrl} />}
+          {shows("card") && (data.cardDataUrl || data.cardQrDataUrl) && (
+            <CardBlock src={data.cardDataUrl} qr={data.cardQrDataUrl} />
+          )}
           {shows("qr") && data.qrDataUrl && <QrBlock src={data.qrDataUrl} />}
           {shows("social") && (
             <AssetGroupBlock
@@ -302,11 +304,23 @@ function SignatureBlock({ html }: { html: string }) {
   );
 }
 
-function CardBlock({ src }: { src: string }) {
+function CardBlock({ src, qr }: { src: string | null; qr?: string | null }) {
   return (
     <Block label="Digital Card" className="bb-block-card">
-      <div className="bb-card-tile">
-        <img src={src} alt="digital card" />
+      <div className="bb-card-row">
+        {src && (
+          <div className="bb-card-tile">
+            <img src={src} alt="digital card" />
+          </div>
+        )}
+        {qr && (
+          <div className="bb-card-qr">
+            <div className="bb-card-qr-tile">
+              <img src={qr} alt="contact QR code" />
+            </div>
+            <span className="bb-card-qr-caption">Scan to save contact</span>
+          </div>
+        )}
       </div>
     </Block>
   );

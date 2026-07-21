@@ -88,12 +88,13 @@ export const EMBED_TOOLS: Record<EmbedToolKey, EmbedToolDef> = {
     defaultWidth: 680,
     currentBlob: (d) => d.sourceBlobs.card ?? null,
     apply: (raw, data) => {
-      const { image, vcard, ok } = ingestCardPayload(raw);
+      const { image, vcard, qr, ok } = ingestCardPayload(raw);
       if (!ok) return null;
       return {
         ...data,
         cardDataUrl: image ?? data.cardDataUrl,
         cardVcardDataUrl: vcard ?? null,
+        cardQrDataUrl: qr ?? null,
         sourceBlobs: { ...data.sourceBlobs, card: raw.trim() },
       };
     },

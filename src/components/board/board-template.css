@@ -439,6 +439,40 @@
   max-width: 100%;
 }
 
+/* The card + its own contact QR sit side by side (wraps on tight pages). The
+   card's QR encodes the vCard — scanning it saves the contact — so it belongs
+   WITH the card, distinct from the standalone QR Creator code below. */
+.bb-card-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.bb-card-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.bb-card-qr-tile {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.13);
+}
+.bb-card-qr-tile img {
+  display: block;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+.bb-card-qr-caption {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--bb-muted, #8a8178);
+}
+
 /* ---- QR ------------------------------------------------------------------ */
 .bb-block-qr {
   display: flex;
